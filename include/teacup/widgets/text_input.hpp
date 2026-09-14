@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <functional>
 #include <string>
 #include <utility>
 
@@ -24,6 +25,8 @@ struct text_input_state
 class text_input_view
 {
 public:
+    using renderer_fn = std::function<void(const text_input_state&, canvas)>;
+
     text_input_view& text_style(const teacup::style& value)
     {
         text_style_ = value;
@@ -32,6 +35,12 @@ public:
     text_input_view& cursor_style(const teacup::style& value)
     {
         cursor_style_ = value;
+        return *this;
+    }
+
+    text_input_view& renderer(renderer_fn value)
+    {
+        renderer_ = std::move(value);
         return *this;
     }
 
@@ -111,6 +120,11 @@ public:
 
     void render(const text_input_state& state, canvas target) const
     {
+        if (renderer_)
+        {
+            renderer_(state, target);
+            return;
+        }
         if (!target.valid() || target.width() <= 0)
         {
             return;
@@ -163,6 +177,7 @@ private:
 
     teacup::style text_style_;
     teacup::style cursor_style_ = teacup::style{}.reverse();
+    renderer_fn renderer_;
 };
 
 /// A single-line UTF-8 text editor.

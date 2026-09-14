@@ -12,11 +12,31 @@ struct tick_message
 {
 };
 
+enum class Country
+{
+    usa,
+    czech_republic
+};
+
+struct Player
+{
+    std::string name;
+    Country country;
+    bool living = false;
+};
+
+std::string country_name(Country country)
+{
+    return country == Country::usa ? "USA" : "Czech Republic";
+};
+
 struct model
 {
     int tick = 0;
     teacup::size screen_size{ 80, 24 };
     bool input_focused = false;
+    bool players_focused = false;
+    bool tabs_focused = false;
     std::string last_key = "-";
     std::string last_mouse = "-";
     teacup::widgets::list_state menu;
@@ -24,6 +44,7 @@ struct model
     teacup::widgets::text_input_state input;
     teacup::widgets::viewport_state viewport;
     teacup::widgets::spinner_state spinner;
+    teacup::widgets::basic_list_state<Player> players;
 };
 
 struct showcase_layout
@@ -38,7 +59,7 @@ showcase_layout layout_for(teacup::size screen_size)
 {
     using namespace teacup;
     const rect screen = rect::from_size(screen_size);
-    const auto rows = split_vertical(screen, { constraint::fixed(4), constraint::flex(), constraint::fixed(1) });
+    const auto rows = split_vertical(screen, { constraint::fixed(7), constraint::flex(), constraint::fixed(1) });
     const auto columns = split_horizontal(rows[1], { constraint::percent(42), constraint::flex() }, 1);
     const rect header_inner = rows[0].inset(2);
     const rect navigation_inner = columns[0].inset(2);
@@ -50,6 +71,25 @@ showcase_layout layout_for(teacup::size screen_size)
              navigation_areas[0],
              navigation_areas[1],
              component_areas[2].inset(1) };
+}
+
+void render_player(const Player& player, teacup::canvas row, const teacup::style&, bool selected)
+{
+    using namespace teacup;
+    widgets::text{ player.name }
+        .style(style{}.fg(selected ? palette::accent() : palette::text()).bold())
+        .render(row.sub(rect{ 0, 0, row.width(), 1 }));
+    widgets::text{ "Country: " + country_name(player.country) }
+        .style(style{}.fg(palette::subtle()))
+        .render(row.sub(rect{ 0, 1, row.width(), 1 }));
+
+    widgets::text{ "Living:" }
+        .style(style{}.fg(palette::subtle()))
+        .render(row.sub(rect{ 0, 2, 8, 1 }));
+    widgets::checkbox_view{}
+        .checked_style(style{}.fg(palette::success()).bold())
+        .unchecked_style(style{}.fg(palette::danger()))
+        .render(widgets::checkbox_state{ player.living }, row.sub(rect{ 8, 2, row.width() - 8, 1 }));
 }
 
 teacup::cmd tick()
@@ -68,6 +108,12 @@ teacup::update_result<model> update(model m, const teacup::message& message)
     teacup::widgets::tabs_view tabs_view;
     const teacup::widgets::text_input_view input_view;
     const teacup::widgets::viewport_view viewport_view;
+    teacup::widgets::basic_list_view<Player> players_view;
+    const auto focus_menu = [&] { m.input_focused = false; m.players_focused = false; m.tabs_focused = false; };
+    const auto focus_input = [&] { m.input_focused = true; m.players_focused = false; m.tabs_focused = false; };
+    const auto focus_players = [&] { m.input_focused = false; m.players_focused = true; m.tabs_focused = false; };
+    const auto focus_tabs = [&] { m.input_focused = false; m.players_focused = false; m.tabs_focused = true; };
+    players_view.item_height(3).viewport_height(layout_for(m.screen_size).viewport.height);
 
     if (const auto* mouse = teacup::msg_cast<teacup::mouse_event>(message))
     {
@@ -75,13 +121,34 @@ teacup::update_result<model> update(model m, const teacup::message& message)
         m.last_mouse = std::to_string(mouse->position.x) + "," + std::to_string(mouse->position.y);
         if (menu_view.update(m.menu, *mouse, layout.menu))
         {
-            m.input_focused = m.menu.selected == 1;
+            if (m.menu.selected == 1) focus_input();
+            else if (m.menu.selected == 2) focus_players();
+            else focus_menu();
         }
-        tabs_view.labels({ "gallery", "layout", "events" }).update(m.tabs, *mouse, layout.tabs);
+        if (tabs_view.labels({ "gallery", "layout", "events" }).update(m.tabs, *mouse, layout.tabs))
+        {
+            focus_tabs();
+        }
         viewport_view.update(m.viewport, *mouse, layout.viewport);
+        if (players_view.update(m.players, *mouse, layout.viewport))
+        {
+            focus_players();
+            m.menu.selected = 2;
+        }
+        if (mouse->action == teacup::mouse_action::press && mouse->button == teacup::mouse_button::left
+            && layout.viewport.contains(mouse->position))
+        {
+            const int row = m.players.offset * 3 + mouse->position.y - layout.viewport.y;
+            const int item = row / 3;
+            if (row % 3 == 2 && item >= 0 && item < static_cast<int>(m.players.items.size()))
+            {
+                m.players.items[static_cast<std::size_t>(item)].living
+                    = !m.players.items[static_cast<std::size_t>(item)].living;
+            }
+        }
         if (input_view.update(m.input, *mouse, layout.input))
         {
-            m.input_focused = true;
+            focus_input();
             m.menu.selected = 1;
         }
         return teacup::next(m);
@@ -106,6 +173,7 @@ teacup::update_result<model> update(model m, const teacup::message& message)
         {
             input_view.update(m.input, *paste);
         }
+
         return teacup::next(m);
     }
 
@@ -119,45 +187,79 @@ teacup::update_result<model> update(model m, const teacup::message& message)
 
         if (key->code == teacup::key::tab && teacup::has(key->modifiers, teacup::modifier::shift))
         {
-            m.input_focused = !m.input_focused;
-            if (m.input_focused)
-            {
-                m.menu.selected = 1;
-            }
+            if (m.tabs_focused) focus_players();
+            else if (m.input_focused) focus_menu();
+            else if (m.players_focused) focus_input();
+            else focus_tabs();
             return teacup::next(m);
         }
         if (key->code == teacup::key::tab)
         {
-            m.input_focused = !m.input_focused;
-            if (m.input_focused)
-            {
-                m.menu.selected = 1;
-            }
+            if (m.tabs_focused) focus_menu();
+            else if (m.input_focused) focus_players();
+            else if (m.players_focused) focus_tabs();
+            else focus_input();
+            if (m.input_focused) m.menu.selected = 1;
+            if (m.players_focused) m.menu.selected = 2;
             return teacup::next(m);
         }
 
         if (m.input_focused)
         {
-            if (key->code == teacup::key::up || key->code == teacup::key::down)
-            {
-                if (menu_view.update(m.menu, *key))
-                {
-                    m.input_focused = m.menu.selected == 1;
-                    return teacup::next(m);
-                }
-            }
             if (key->code == teacup::key::enter)
             {
-                m.input_focused = false;
+                focus_menu();
                 return teacup::next(m);
             }
             input_view.update(m.input, *key);
             return teacup::next(m);
         }
 
+        if (m.tabs_focused)
+        {
+            if (key->code == teacup::key::left || key->code == teacup::key::right)
+            {
+                tabs_view.update(m.tabs, *key);
+                return teacup::next(m);
+            }
+            if (key->code == teacup::key::enter)
+            {
+                focus_menu();
+                return teacup::next(m);
+            }
+        }
+
+        if (m.players_focused)
+        {
+            if (key->code == teacup::key::up || key->code == teacup::key::down
+                || key->code == teacup::key::home || key->code == teacup::key::end)
+            {
+                players_view.update(m.players, *key);
+                return teacup::next(m);
+            }
+            const int height = layout_for(m.screen_size).viewport.height;
+            if (key->code == teacup::key::page_up)
+            {
+                players_view.page_up(m.players, height);
+                return teacup::next(m);
+            }
+            if (key->code == teacup::key::page_down)
+            {
+                players_view.page_down(m.players, height);
+                return teacup::next(m);
+            }
+            if (key->code == teacup::key::enter)
+            {
+                focus_menu();
+                return teacup::next(m);
+            }
+        }
+
         if (key->code == teacup::key::enter)
         {
-            m.input_focused = m.menu.selected == 1;
+            if (m.menu.selected == 1) focus_input();
+            else if (m.menu.selected == 2) focus_players();
+            else focus_menu();
             return teacup::next(m);
         }
 
@@ -168,14 +270,16 @@ teacup::update_result<model> update(model m, const teacup::message& message)
                                      || key->code == teacup::key::home
                                      || key->code == teacup::key::end))
         {
-            m.input_focused = true;
+            focus_input();
             input_view.update(m.input, *key);
             return teacup::next(m);
         }
 
         if (menu_view.update(m.menu, *key))
         {
-            m.input_focused = m.menu.selected == 1;
+            if (m.menu.selected == 1) focus_input();
+            else if (m.menu.selected == 2) focus_players();
+            else focus_menu();
             return teacup::next(m);
         }
 
@@ -206,7 +310,7 @@ void view(const model& m, teacup::canvas screen)
 
     screen.fill(" ", style{}.bg(palette::surface()));
     const auto rows = split_vertical(
-        screen.bounds(), { constraint::fixed(4), constraint::flex(), constraint::fixed(1) });
+        screen.bounds(), { constraint::fixed(7), constraint::flex(), constraint::fixed(1) });
 
     widgets::block{}
         .border(border::rounded())
@@ -221,7 +325,7 @@ void view(const model& m, teacup::canvas screen)
                 .style(style{}.fg(palette::text()).bold())
                 .render(inner.sub(header[0]));
             widgets::spinner_view{}
-                .frames({ "| ready", "/ ready", "- ready", "\\ ready" })
+                .frames({ "⠋ live", "⠙ live", "⠹ live", "⠸ live", "⠼ live", "⠴ live", "⠦ live", "⠧ live", "⠇ live", "⠏ live" })
                 .style(style{}.fg(palette::accent()))
                 .render(m.spinner, inner.sub(header[1]));
             widgets::tabs_view{}
@@ -236,21 +340,24 @@ void view(const model& m, teacup::canvas screen)
     widgets::block{}
         .border(border::rounded())
         .border_style(style{}.fg(palette::subtle()))
-        .title(" navigation ")
+        .title(" navigation · players offset: " + std::to_string(m.players.offset) + " ")
         .title_style(style{}.fg(palette::subtle()))
         .padding(1)
         .render(screen.sub(columns[0]), [&](canvas inner) {
             const auto areas = split_vertical(inner.bounds(), { constraint::fixed(6), constraint::flex() }, 1);
             widgets::list_view{}
-                .selected_style(m.input_focused
+                .selected_style(m.input_focused || m.players_focused || m.tabs_focused
                         ? style{}.fg(palette::accent()).bold()
                         : style{}.fg(palette::surface()).bg(palette::accent()).bold())
                 .item_style(style{}.fg(palette::text()))
                 .render(m.menu, inner.sub(areas[0]));
 
-            widgets::viewport_view{}
-                .style(style{}.fg(palette::subtle()))
-                .render(m.viewport, inner.sub(areas[1]));
+            widgets::basic_list_view<Player>{}
+                .item_height(3)
+                .selected_style(style{}.bg(color::hex("#313244")))
+                .item_style(style{}.fg(palette::text()))
+                .item_renderer(render_player)
+                .render(m.players, inner.sub(areas[1]));
         });
 
     widgets::block{}
@@ -308,11 +415,18 @@ void view(const model& m, teacup::canvas screen)
 int main()
 {
     model initial;
-    initial.menu.items = { "overview", "text input", "viewport", "table", "progress" };
+    initial.menu.items = { "overview", "text input", "players", "table", "progress" };
     initial.tabs.selected = 0;
     initial.input.value = "type here";
     initial.input.cursor = initial.input.value.size();
     initial.viewport.lines = { "viewport", "scrollable", "content", "lives", "inside", "a", "small", "window" };
+    initial.players.items = {
+        { "Name: McEnroe", Country::usa, true },
+        { "Name: Agassi", Country::usa, true },
+        { "Name: Navratilova", Country::czech_republic, true },
+        { "Name: Mrtvy", Country::czech_republic, false },
+        { "Name: Deadmeat", Country::usa, false },
+    };
 
     teacup::options options;
     options.alt_screen = true;

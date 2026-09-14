@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <functional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -29,9 +30,17 @@ struct viewport_state
 class viewport_view
 {
 public:
+    using renderer_fn = std::function<void(const viewport_state&, canvas)>;
+
     viewport_view& style(const teacup::style& value)
     {
         style_ = value;
+        return *this;
+    }
+
+    viewport_view& renderer(renderer_fn value)
+    {
+        renderer_ = std::move(value);
         return *this;
     }
 
@@ -64,6 +73,11 @@ public:
 
     void render(const viewport_state& state, canvas target) const
     {
+        if (renderer_)
+        {
+            renderer_(state, target);
+            return;
+        }
         if (!target.valid() || target.width() <= 0 || target.height() <= 0)
         {
             return;
@@ -82,6 +96,7 @@ public:
 
 private:
     teacup::style style_;
+    renderer_fn renderer_;
 };
 
 /// A vertically scrollable collection of clipped text lines.

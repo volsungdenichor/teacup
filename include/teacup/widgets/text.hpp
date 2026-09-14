@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -20,6 +21,8 @@ std::vector<std::string> wrap_text(const std::string& text, int width);
 class text
 {
 public:
+    using renderer_fn = std::function<void(canvas)>;
+
     text() = default;
     explicit text(std::string content)
         : content_{ std::move(content) }
@@ -51,6 +54,12 @@ public:
         wrap_ = enabled;
         return *this;
     }
+
+    text& renderer(renderer_fn value)
+    {
+        renderer_ = std::move(value);
+        return *this;
+    }
     /// Number of rows the text needs at the given width.
     [[nodiscard]] int height_for(int width) const
     {
@@ -59,6 +68,11 @@ public:
 
     void render(canvas target) const
     {
+        if (renderer_)
+        {
+            renderer_(target);
+            return;
+        }
         if (!target.valid())
         {
             return;
@@ -92,6 +106,7 @@ private:
     teacup::align align_ = teacup::align::start;
     teacup::align valign_ = teacup::align::start;
     bool wrap_ = true;
+    renderer_fn renderer_;
 };
 
 }  // namespace widgets

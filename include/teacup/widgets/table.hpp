@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <functional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -18,6 +19,8 @@ namespace widgets
 class table
 {
 public:
+    using renderer_fn = std::function<void(canvas)>;
+
     table() = default;
 
     table& headers(std::vector<std::string> value)
@@ -40,8 +43,18 @@ public:
         row_style_ = s;
         return *this;
     }
+    table& renderer(renderer_fn value)
+    {
+        renderer_ = std::move(value);
+        return *this;
+    }
     void render(canvas target) const
     {
+        if (renderer_)
+        {
+            renderer_(target);
+            return;
+        }
         if (!target.valid())
         {
             return;
@@ -156,6 +169,7 @@ private:
     std::vector<std::vector<std::string>> rows_;
     style header_style_ = style{}.fg(color::hex("#f38ba8")).add(attr::bold);
     style row_style_ = style{}.fg(color::hex("#cdd6f4"));
+    renderer_fn renderer_;
 };
 
 }  // namespace widgets

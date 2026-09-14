@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <functional>
 #include <string>
 #include <utility>
 
@@ -15,6 +16,8 @@ namespace widgets
 class progress
 {
 public:
+    using renderer_fn = std::function<void(canvas)>;
+
     explicit progress(double ratio = 0.0)
         : ratio_{ std::clamp(ratio, 0.0, 1.0) }
     {
@@ -42,8 +45,18 @@ public:
         empty_ = std::move(empty);
         return *this;
     }
+    progress& renderer(renderer_fn value)
+    {
+        renderer_ = std::move(value);
+        return *this;
+    }
     void render(canvas target, int y = 0) const
     {
+        if (renderer_)
+        {
+            renderer_(target);
+            return;
+        }
         const int width = target.width();
         if (width <= 0)
         {
@@ -72,6 +85,7 @@ private:
     style track_style_ = style{}.fg(color::hex("#45475a"));
     std::string filled_ = "█";
     std::string empty_ = "░";
+    renderer_fn renderer_;
 };
 
 }  // namespace widgets

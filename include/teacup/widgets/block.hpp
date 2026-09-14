@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <string>
 #include <utility>
 
@@ -19,6 +20,8 @@ namespace widgets
 class block
 {
 public:
+    using renderer_fn = std::function<void(canvas)>;
+
     block& border(const teacup::border& b)
     {
         border_ = b;
@@ -62,6 +65,12 @@ public:
         background_ = c;
         return *this;
     }
+
+    block& renderer(renderer_fn value)
+    {
+        renderer_ = std::move(value);
+        return *this;
+    }
     /// The area left for content once border and padding are subtracted.
     [[nodiscard]] rect inner(const rect& area) const
     {
@@ -95,7 +104,11 @@ public:
 
     void render(canvas target) const
     {
-        draw(target);
+        canvas inner_canvas = draw(target);
+        if (inner_canvas.valid() && renderer_)
+        {
+            renderer_(inner_canvas);
+        }
     }
 
 private:
@@ -145,6 +158,7 @@ private:
     int pad_right_ = 0;
     int pad_bottom_ = 0;
     color background_{};
+    renderer_fn renderer_;
 };
 
 }  // namespace widgets

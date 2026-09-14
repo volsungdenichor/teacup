@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <functional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -23,6 +24,8 @@ struct tabs_state
 class tabs_view
 {
 public:
+    using renderer_fn = std::function<void(const tabs_state&, canvas)>;
+
     tabs_view& labels(std::vector<std::string> value)
     {
         labels_ = std::move(value);
@@ -36,6 +39,12 @@ public:
     tabs_view& selected_style(const teacup::style& value)
     {
         selected_style_ = value;
+        return *this;
+    }
+
+    tabs_view& renderer(renderer_fn value)
+    {
+        renderer_ = std::move(value);
         return *this;
     }
 
@@ -84,6 +93,11 @@ public:
 
     void render(const tabs_state& state, canvas target) const
     {
+        if (renderer_)
+        {
+            renderer_(state, target);
+            return;
+        }
         if (!target.valid())
         {
             return;
@@ -105,6 +119,7 @@ private:
     std::vector<std::string> labels_;
     teacup::style tab_style_;
     teacup::style selected_style_ = teacup::style{}.bold().underline();
+    renderer_fn renderer_;
 };
 
 /// A horizontally arranged, keyboard-selectable tab bar.

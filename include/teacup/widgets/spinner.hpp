@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <functional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -22,6 +23,8 @@ struct spinner_state
 class spinner_view
 {
 public:
+    using renderer_fn = std::function<void(const spinner_state&, canvas)>;
+
     spinner_view& frames(std::vector<std::string> value)
     {
         frames_ = std::move(value);
@@ -30,6 +33,12 @@ public:
     spinner_view& style(const teacup::style& value)
     {
         style_ = value;
+        return *this;
+    }
+
+    spinner_view& renderer(renderer_fn value)
+    {
+        renderer_ = std::move(value);
         return *this;
     }
     void advance(spinner_state& state) const
@@ -41,6 +50,11 @@ public:
     }
     void render(const spinner_state& state, canvas target) const
     {
+        if (renderer_)
+        {
+            renderer_(state, target);
+            return;
+        }
         if (!target.valid() || frames_.empty())
         {
             return;
@@ -51,6 +65,7 @@ public:
 private:
     std::vector<std::string> frames_{ "|", "/", "-", "\\" };
     teacup::style style_;
+    renderer_fn renderer_;
 };
 
 /// A single-cell frame spinner.

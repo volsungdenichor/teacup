@@ -2,13 +2,23 @@
 
 #include "teacup/event.hpp"
 #include "teacup/surface.hpp"
+#include "teacup/widgets/checkbox.hpp"
 #include "teacup/widgets/list.hpp"
 #include "teacup/widgets/spinner.hpp"
 #include "teacup/widgets/tabs.hpp"
+#include "teacup/widgets/text.hpp"
 #include "teacup/widgets/text_input.hpp"
 #include "teacup/widgets/viewport.hpp"
 
 using namespace teacup;
+
+namespace
+{
+struct menu_item
+{
+    std::string label;
+};
+}
 
 TEST_CASE("list view updates application-owned list state")
 {
@@ -17,6 +27,40 @@ TEST_CASE("list view updates application-owned list state")
 
     REQUIRE(view.update(state, key_event{ key::down }));
     CHECK(state.selected == 1);
+}
+
+TEST_CASE("generic list view renders widget-like items")
+{
+    surface s{ size{ 12, 2 } };
+    s.clear();
+    canvas c{ s };
+
+    widgets::basic_list_state<menu_item> state{ { { "first" }, { "second" } }, 1 };
+    widgets::basic_list_view<menu_item> view;
+    view.item_renderer([](const menu_item& item, canvas row, const style& item_style, bool selected) {
+        row.text(0, 0, (selected ? "[" : " ") + item.label + (selected ? "]" : " "), item_style);
+    });
+    view.render(state, c);
+
+    CHECK(s.row_text(0) == " first      ");
+    CHECK(s.row_text(1) == "[second]    ");
+}
+
+TEST_CASE("list view allows replacing the default string renderer")
+{
+    surface s{ size{ 10, 2 } };
+    s.clear();
+    canvas c{ s };
+
+    widgets::list_state state{ { "one", "two" }, 1 };
+    widgets::list_view view;
+    view.item_renderer([](const std::string& item, canvas row, const style& item_style, bool selected) {
+        row.text(0, 0, (selected ? "[" : " ") + item + (selected ? "]" : " "), item_style);
+    });
+    view.render(state, c);
+
+    CHECK(s.row_text(0) == " one      ");
+    CHECK(s.row_text(1) == "[two]     ");
 }
 
 TEST_CASE("text input view updates application-owned text state")
@@ -75,4 +119,98 @@ TEST_CASE("widget views respond to mouse events")
     widgets::text_input_view input_view;
     CHECK(input_view.update(input_state, mouse_event{ point{ 2, 0 }, mouse_button::left, mouse_action::press }, rect{ 0, 0, 8, 1 }));
     CHECK(input_state.cursor == 2);
+}
+
+TEST_CASE("widgets allow custom rendering into the allocated canvas")
+{
+    surface s{ size{ 12, 1 } };
+    s.clear();
+    canvas c{ s };
+
+    widgets::text{ "ignored" }
+        .renderer([](canvas target) { target.text(0, 0, "custom"); })
+        .render(c);
+
+    CHECK(s.row_text(0) == "custom      ");
+}
+
+TEST_CASE("checkbox view toggles from keyboard and mouse")
+{
+    widgets::checkbox_state state{ false };
+    widgets::checkbox_view view;
+
+    REQUIRE(view.update(state, key_event{ key::space }));
+    CHECK(state.checked);
+    REQUIRE(view.update(state, mouse_event{ point{ 0, 0 }, mouse_button::left, mouse_action::press }, rect{ 0, 0, 4, 1 }));
+    CHECK_FALSE(state.checked);
+}
+
+TEST_CASE("generic list allocates multi-line item regions")
+{
+    surface s{ size{ 12, 4 } };
+    s.clear();
+    widgets::basic_list_state<menu_item> state{ { { "first" }, { "second" } }, 0 };
+    widgets::basic_list_view<menu_item> view;
+    view.item_height(2).item_renderer([](const menu_item& item, canvas row, const style& style, bool) {
+        row.text(0, 0, item.label, style);
+        row.text(0, 1, "detail", style);
+    });
+    view.render(state, canvas{ s });
+
+    CHECK(s.row_text(0) == "first       ");
+    CHECK(s.row_text(1) == "detail      ");
+    CHECK(s.row_text(2) == "second      ");
+    CHECK(s.row_text(3) == "detail      ");
+}
+
+TEST_CASE("generic list scrolls multi-line item regions")
+{
+    surface s{ size{ 12, 4 } };
+    s.clear();
+    widgets::basic_list_state<menu_item> state{ { { "first" }, { "second" }, { "third" } }, 0 };
+    widgets::basic_list_view<menu_item> view;
+    view.item_height(2).item_renderer([](const menu_item& item, canvas row, const style& style, bool) {
+        row.text(0, 0, item.label, style);
+        row.text(0, 1, "detail", style);
+    });
+
+    view.page_down(state, 4);
+    CHECK(state.offset == 1);
+    view.render(state, canvas{ s });
+    CHECK(s.row_text(0) == "second      ");
+    CHECK(s.row_text(2) == "third       ");
+}
+
+TEST_CASE("generic list keeps the selected item visible")
+{
+    widgets::basic_list_state<menu_item> state{ { { "first" }, { "second" }, { "third" } }, 0 };
+    widgets::basic_list_view<menu_item> view;
+    view.item_height(2);
+
+    view.update(state, key_event{ key::end });
+    view.ensure_visible(state, 4);
+
+    CHECK(state.selected == 2);
+    CHECK(state.offset == 1);
+}
+
+TEST_CASE("generic list scrolls enough to reveal the last item")
+{
+    widgets::basic_list_state<menu_item> state{
+        { { "first" }, { "second" }, { "third" } }, 0 };
+    widgets::basic_list_view<menu_item> view;
+    view.item_height(2).item_renderer([](const menu_item& item, canvas row, const style& style, bool) {
+        row.text(0, 0, item.label, style);
+        row.text(0, 1, "detail", style);
+    });
+
+    view.update(state, key_event{ key::end });
+    view.ensure_visible(state, 5);
+    surface surface_value{ size{ 12, 5 } };
+    surface_value.clear();
+    view.render(state, canvas{ surface_value });
+
+    CHECK(state.offset == 1);
+    CHECK(surface_value.row_text(0) == "second      ");
+    CHECK(surface_value.row_text(2) == "third       ");
 }

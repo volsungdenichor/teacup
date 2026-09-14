@@ -15,6 +15,7 @@
 #include "teacup/style.hpp"
 #include "teacup/surface.hpp"
 #include "teacup/widgets/block.hpp"
+#include "teacup/widgets/checkbox.hpp"
 #include "teacup/widgets/list.hpp"
 #include "teacup/widgets/progress.hpp"
 #include "teacup/widgets/table.hpp"
