@@ -1,0 +1,7 @@
+add_executable(teacup_example_counter counter/main.cpp)
+target_link_libraries(teacup_example_counter PRIVATE teacup::teacup)
+set_target_properties(teacup_example_counter PROPERTIES OUTPUT_NAME counter)
+
+add_executable(teacup_example_showcase showcase/main.cpp)
+target_link_libraries(teacup_example_showcase PRIVATE teacup::teacup)
+set_target_properties(teacup_example_showcase PROPERTIES OUTPUT_NAME showcase)

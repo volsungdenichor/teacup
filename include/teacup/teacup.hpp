@@ -1,0 +1,25 @@
+#pragma once
+
+/// teacup — a Bubbletea-inspired functional TUI library for C++17.
+
+#include "teacup/app.hpp"
+#include "teacup/border.hpp"
+#include "teacup/canvas.hpp"
+#include "teacup/color.hpp"
+#include "teacup/command.hpp"
+#include "teacup/event.hpp"
+#include "teacup/geometry.hpp"
+#include "teacup/layout.hpp"
+#include "teacup/message.hpp"
+#include "teacup/program.hpp"
+#include "teacup/style.hpp"
+#include "teacup/surface.hpp"
+#include "teacup/widgets/block.hpp"
+#include "teacup/widgets/list.hpp"
+#include "teacup/widgets/progress.hpp"
+#include "teacup/widgets/table.hpp"
+#include "teacup/widgets/tabs.hpp"
+#include "teacup/widgets/text.hpp"
+#include "teacup/widgets/text_input.hpp"
+#include "teacup/widgets/viewport.hpp"
+#include "teacup/widgets/spinner.hpp"
