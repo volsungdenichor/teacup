@@ -59,6 +59,29 @@ public:
         return false;
     }
 
+    bool update(tabs_state& state, const mouse_event& event, const rect& area) const
+    {
+        if (event.action != mouse_action::press || event.button != mouse_button::left || !area.contains(event.position))
+        {
+            return false;
+        }
+        int x = area.x;
+        for (std::size_t i = 0; i < labels_.size(); ++i)
+        {
+            const std::string label = (static_cast<int>(i) == state.selected)
+                ? "[" + labels_[i] + "]"
+                : " " + labels_[i] + " ";
+            const int width = static_cast<int>(label.size());
+            if (event.position.x >= x && event.position.x < x + width)
+            {
+                state.selected = static_cast<int>(i);
+                return true;
+            }
+            x += width;
+        }
+        return false;
+    }
+
     void render(const tabs_state& state, canvas target) const
     {
         if (!target.valid())

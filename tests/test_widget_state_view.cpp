@@ -52,3 +52,27 @@ TEST_CASE("tabs and spinner views update application-owned state")
     spinner_view.advance(spinner_state);
     CHECK(spinner_state.frame == 1);
 }
+
+TEST_CASE("widget views respond to mouse events")
+{
+    widgets::list_state list_state{ { "one", "two", "three" }, 0 };
+    widgets::list_view list_view;
+    CHECK(list_view.update(list_state, mouse_event{ point{ 2, 1 }, mouse_button::left, mouse_action::press }, rect{ 0, 0, 8, 3 }));
+    CHECK(list_state.selected == 1);
+
+    widgets::tabs_state tabs_state{};
+    widgets::tabs_view tabs_view;
+    tabs_view.labels({ "one", "two" });
+    CHECK(tabs_view.update(tabs_state, mouse_event{ point{ 6, 0 }, mouse_button::left, mouse_action::press }, rect{ 0, 0, 12, 1 }));
+    CHECK(tabs_state.selected == 1);
+
+    widgets::viewport_state viewport_state{ { "one", "two", "three" }, 1 };
+    widgets::viewport_view viewport_view;
+    CHECK(viewport_view.update(viewport_state, mouse_event{ point{ 0, 0 }, mouse_button::wheel_up, mouse_action::press }, rect{ 0, 0, 8, 2 }));
+    CHECK(viewport_state.offset == 0);
+
+    widgets::text_input_state input_state{ "abc", 0 };
+    widgets::text_input_view input_view;
+    CHECK(input_view.update(input_state, mouse_event{ point{ 2, 0 }, mouse_button::left, mouse_action::press }, rect{ 0, 0, 8, 1 }));
+    CHECK(input_state.cursor == 2);
+}

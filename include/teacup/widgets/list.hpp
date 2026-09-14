@@ -45,8 +45,8 @@ public:
     {
         state.clamp_selection();
         if (state.items.empty())
-        {
-            return false;
+            {
+                return false;
         }
         if (event.code == key::up || event.matches("k"))
         {
@@ -70,6 +70,21 @@ public:
         }
         return false;
     }
+
+        bool update(list_state& state, const mouse_event& event, const rect& area) const
+        {
+            if (event.action != mouse_action::press || event.button != mouse_button::left || !area.contains(event.position))
+            {
+                return false;
+            }
+            const int row = event.position.y - area.y;
+            if (row < 0 || row >= static_cast<int>(state.items.size()))
+            {
+                return false;
+            }
+            state.selected = row;
+            return true;
+        }
 
     void render(const list_state& state, canvas target) const
     {

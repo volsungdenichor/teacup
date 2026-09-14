@@ -85,6 +85,30 @@ public:
         return true;
     }
 
+    bool update(text_input_state& state, const mouse_event& event, const rect& area) const
+    {
+        if (event.action != mouse_action::press || event.button != mouse_button::left || !area.contains(event.position))
+        {
+            return false;
+        }
+        const int column = event.position.x - area.x;
+        std::size_t position = 0;
+        int width = 0;
+        while (position < state.value.size() && width < column)
+        {
+            const std::size_t next = next_cursor(state, position);
+            const int glyph_width = utf8::width(state.value.substr(position, next - position));
+            if (width + glyph_width / 2 >= column)
+            {
+                break;
+            }
+            width += glyph_width;
+            position = next;
+        }
+        state.cursor = position;
+        return true;
+    }
+
     void render(const text_input_state& state, canvas target) const
     {
         if (!target.valid() || target.width() <= 0)

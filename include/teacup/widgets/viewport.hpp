@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "teacup/canvas.hpp"
+#include "teacup/event.hpp"
 #include "teacup/style.hpp"
 
 namespace teacup
@@ -41,6 +42,25 @@ public:
     }
     void page_down(viewport_state& state, int height) const { scroll(state, (std::max)(1, height)); }
     void page_up(viewport_state& state, int height) const { scroll(state, -((std::max)(1, height))); }
+
+    bool update(viewport_state& state, const mouse_event& event, const rect& area) const
+    {
+        if (!area.contains(event.position))
+        {
+            return false;
+        }
+        if (event.button == mouse_button::wheel_up)
+        {
+            scroll(state, -1);
+            return true;
+        }
+        if (event.button == mouse_button::wheel_down)
+        {
+            scroll(state, 1);
+            return true;
+        }
+        return false;
+    }
 
     void render(const viewport_state& state, canvas target) const
     {

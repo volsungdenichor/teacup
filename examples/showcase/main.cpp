@@ -15,14 +15,42 @@ struct tick_message
 struct model
 {
     int tick = 0;
+    teacup::size screen_size{ 80, 24 };
     bool input_focused = false;
     std::string last_key = "-";
+    std::string last_mouse = "-";
     teacup::widgets::list_state menu;
     teacup::widgets::tabs_state tabs;
     teacup::widgets::text_input_state input;
     teacup::widgets::viewport_state viewport;
     teacup::widgets::spinner_state spinner;
 };
+
+struct showcase_layout
+{
+    teacup::rect tabs;
+    teacup::rect menu;
+    teacup::rect viewport;
+    teacup::rect input;
+};
+
+showcase_layout layout_for(teacup::size screen_size)
+{
+    using namespace teacup;
+    const rect screen = rect::from_size(screen_size);
+    const auto rows = split_vertical(screen, { constraint::fixed(4), constraint::flex(), constraint::fixed(1) });
+    const auto columns = split_horizontal(rows[1], { constraint::percent(42), constraint::flex() }, 1);
+    const rect header_inner = rows[0].inset(2);
+    const rect navigation_inner = columns[0].inset(2);
+    const rect components_inner = columns[1].inset(2);
+    const auto navigation_areas = split_vertical(navigation_inner, { constraint::fixed(6), constraint::flex() }, 1);
+    const auto component_areas = split_vertical(
+        components_inner, { constraint::fixed(1), constraint::fixed(4), constraint::fixed(5) }, 1);
+    return { rect{ header_inner.x, header_inner.y + 2, header_inner.width, 1 },
+             navigation_areas[0],
+             navigation_areas[1],
+             component_areas[2].inset(1) };
+}
 
 teacup::cmd tick()
 {
@@ -37,8 +65,33 @@ teacup::cmd init(const model&)
 teacup::update_result<model> update(model m, const teacup::message& message)
 {
     const teacup::widgets::list_view menu_view;
+    teacup::widgets::tabs_view tabs_view;
     const teacup::widgets::text_input_view input_view;
     const teacup::widgets::viewport_view viewport_view;
+
+    if (const auto* mouse = teacup::msg_cast<teacup::mouse_event>(message))
+    {
+        const auto layout = layout_for(m.screen_size);
+        m.last_mouse = std::to_string(mouse->position.x) + "," + std::to_string(mouse->position.y);
+        if (menu_view.update(m.menu, *mouse, layout.menu))
+        {
+            m.input_focused = m.menu.selected == 1;
+        }
+        tabs_view.labels({ "gallery", "layout", "events" }).update(m.tabs, *mouse, layout.tabs);
+        viewport_view.update(m.viewport, *mouse, layout.viewport);
+        if (input_view.update(m.input, *mouse, layout.input))
+        {
+            m.input_focused = true;
+            m.menu.selected = 1;
+        }
+        return teacup::next(m);
+    }
+
+    if (const auto* resize = teacup::msg_cast<teacup::resize_event>(message))
+    {
+        m.screen_size = resize->size;
+        return teacup::next(m);
+    }
 
     if (message.is<tick_message>())
     {
@@ -237,6 +290,9 @@ void view(const model& m, teacup::canvas screen)
                     widgets::text{ "> " + m.input.value }
                         .style(style{}.fg(palette::subtle()))
                         .render(input_area.sub(rect{ 0, 1, input_area.width(), 1 }));
+                    widgets::text{ "mouse: " + m.last_mouse }
+                        .style(style{}.fg(palette::subtle()))
+                        .render(input_area.sub(rect{ 0, 2, input_area.width(), 1 }));
                 });
 
         });
@@ -260,5 +316,6 @@ int main()
 
     teacup::options options;
     options.alt_screen = true;
+    options.mouse = true;
     return teacup::run(teacup::make_app(initial, init, update, view), options);
 }
