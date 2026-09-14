@@ -41,8 +41,19 @@ Layers, bottom-up:
 4. **Input** — byte stream → `key_event` / `mouse_event` / `resize_event` / `paste_event` / `focus_event`.
 5. **Runtime** — `message` (type-erased), `cmd` (async producer of a message), `program` loop.
 6. **Application glue** — `make_app(model, init, update, view)` and `run(app)`.
-7. **Widgets** — pure functions `(props, const state&, canvas) -> void` plus optional
-   `update` for interactive ones (text input, list, viewport).
+7. **Widgets** — view objects render application-owned state; interactive views expose
+  `update(state&, message)` for state transitions. Configuration such as labels,
+  items, frames, and styles remains in the view.
+
+For example:
+
+```cpp
+teacup::widgets::text_input_state editor_state{ "hello", 5 };
+teacup::widgets::text_input_view editor_view;
+
+editor_view.update(editor_state, key_event{ key::character, "!" });
+editor_view.render(editor_state, canvas);
+```
 
 ## 3. Public API sketch
 

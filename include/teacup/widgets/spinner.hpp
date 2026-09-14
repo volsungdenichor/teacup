@@ -13,45 +13,70 @@ namespace teacup
 namespace widgets
 {
 
+struct spinner_state
+{
+    std::size_t frame = 0;
+};
+
+/// View configuration for an application-owned spinner_state.
+class spinner_view
+{
+public:
+    spinner_view& frames(std::vector<std::string> value)
+    {
+        frames_ = std::move(value);
+        return *this;
+    }
+    spinner_view& style(const teacup::style& value)
+    {
+        style_ = value;
+        return *this;
+    }
+    void advance(spinner_state& state) const
+    {
+        if (!frames_.empty())
+        {
+            state.frame = (state.frame + 1) % frames_.size();
+        }
+    }
+    void render(const spinner_state& state, canvas target) const
+    {
+        if (!target.valid() || frames_.empty())
+        {
+            return;
+        }
+        target.text(0, 0, frames_[state.frame % frames_.size()], style_);
+    }
+
+private:
+    std::vector<std::string> frames_{ "|", "/", "-", "\\" };
+    teacup::style style_;
+};
+
 /// A single-cell frame spinner.
 class spinner
 {
 public:
     spinner() = default;
 
-    spinner& frames(std::vector<std::string> value) &
+    spinner& frames(std::vector<std::string> value)
     {
         frames_ = std::move(value);
         normalize_frame();
         return *this;
     }
-    spinner&& frames(std::vector<std::string> value) &&
-    {
-        return std::move(this->frames(std::move(value)));
-    }
-
-    spinner& frame(std::size_t value) &
+    spinner& frame(std::size_t value)
     {
         frame_ = value;
         normalize_frame();
         return *this;
     }
-    spinner&& frame(std::size_t value) &&
-    {
-        return std::move(this->frame(value));
-    }
-
-    spinner& style(const teacup::style& value) &
+    spinner& style(const teacup::style& value)
     {
         style_ = value;
         return *this;
     }
-    spinner&& style(const teacup::style& value) &&
-    {
-        return std::move(this->style(value));
-    }
-
-    spinner& advance() &
+    spinner& advance()
     {
         if (!frames_.empty())
         {
@@ -59,11 +84,6 @@ public:
         }
         return *this;
     }
-    spinner&& advance() &&
-    {
-        return std::move(this->advance());
-    }
-
     [[nodiscard]] std::size_t frame() const
     {
         return frame_;

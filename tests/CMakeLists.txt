@@ -16,6 +16,7 @@ add_executable(teacup_tests
     test_spinner_tabs.cpp
     test_text.cpp
     test_text_input.cpp
+    test_widget_state_view.cpp
     test_viewport.cpp
 )
 target_link_libraries(teacup_tests PRIVATE teacup::teacup Catch2::Catch2WithMain)

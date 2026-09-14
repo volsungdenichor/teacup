@@ -19,67 +19,37 @@ namespace widgets
 class block
 {
 public:
-    block& border(const teacup::border& b) &
+    block& border(const teacup::border& b)
     {
         border_ = b;
         has_border_ = true;
         return *this;
     }
-    block&& border(const teacup::border& b) &&
-    {
-        return std::move(this->border(b));
-    }
-
-    block& border_style(const style& s) &
+    block& border_style(const style& s)
     {
         border_style_ = s;
         return *this;
     }
-    block&& border_style(const style& s) &&
-    {
-        return std::move(this->border_style(s));
-    }
-
-    block& title(std::string text) &
+    block& title(std::string text)
     {
         title_ = std::move(text);
         return *this;
     }
-    block&& title(std::string text) &&
-    {
-        return std::move(this->title(std::move(text)));
-    }
-
-    block& title_style(const style& s) &
+    block& title_style(const style& s)
     {
         title_style_ = s;
         return *this;
     }
-    block&& title_style(const style& s) &&
-    {
-        return std::move(this->title_style(s));
-    }
-
-    block& title_align(align a) &
+    block& title_align(align a)
     {
         title_align_ = a;
         return *this;
     }
-    block&& title_align(align a) &&
-    {
-        return std::move(this->title_align(a));
-    }
-
-    block& padding(int all) &
+    block& padding(int all)
     {
         return padding(all, all, all, all);
     }
-    block&& padding(int all) &&
-    {
-        return std::move(this->padding(all));
-    }
-
-    block& padding(int left, int top, int right, int bottom) &
+    block& padding(int left, int top, int right, int bottom)
     {
         pad_left_ = left;
         pad_top_ = top;
@@ -87,21 +57,11 @@ public:
         pad_bottom_ = bottom;
         return *this;
     }
-    block&& padding(int left, int top, int right, int bottom) &&
-    {
-        return std::move(this->padding(left, top, right, bottom));
-    }
-
-    block& background(const color& c) &
+    block& background(const color& c)
     {
         background_ = c;
         return *this;
     }
-    block&& background(const color& c) &&
-    {
-        return std::move(this->background(c));
-    }
-
     /// The area left for content once border and padding are subtracted.
     [[nodiscard]] rect inner(const rect& area) const
     {

@@ -26,56 +26,31 @@ public:
     {
     }
 
-    text& content(std::string value) &
+    text& content(std::string value)
     {
         content_ = std::move(value);
         return *this;
     }
-    text&& content(std::string value) &&
-    {
-        return std::move(this->content(std::move(value)));
-    }
-
-    text& style(const teacup::style& s) &
+    text& style(const teacup::style& s)
     {
         style_ = s;
         return *this;
     }
-    text&& style(const teacup::style& s) &&
-    {
-        return std::move(this->style(s));
-    }
-
-    text& align(teacup::align a) &
+    text& align(teacup::align a)
     {
         align_ = a;
         return *this;
     }
-    text&& align(teacup::align a) &&
-    {
-        return std::move(this->align(a));
-    }
-
-    text& vertical_align(teacup::align a) &
+    text& vertical_align(teacup::align a)
     {
         valign_ = a;
         return *this;
     }
-    text&& vertical_align(teacup::align a) &&
-    {
-        return std::move(this->vertical_align(a));
-    }
-
-    text& wrap(bool enabled) &
+    text& wrap(bool enabled)
     {
         wrap_ = enabled;
         return *this;
     }
-    text&& wrap(bool enabled) &&
-    {
-        return std::move(this->wrap(enabled));
-    }
-
     /// Number of rows the text needs at the given width.
     [[nodiscard]] int height_for(int width) const
     {

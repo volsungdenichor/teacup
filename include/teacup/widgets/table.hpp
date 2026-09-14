@@ -20,46 +20,26 @@ class table
 public:
     table() = default;
 
-    table& headers(std::vector<std::string> value) &
+    table& headers(std::vector<std::string> value)
     {
         headers_ = std::move(value);
         return *this;
     }
-    table&& headers(std::vector<std::string> value) &&
-    {
-        return std::move(this->headers(std::move(value)));
-    }
-
-    table& rows(std::vector<std::vector<std::string>> value) &
+    table& rows(std::vector<std::vector<std::string>> value)
     {
         rows_ = std::move(value);
         return *this;
     }
-    table&& rows(std::vector<std::vector<std::string>> value) &&
-    {
-        return std::move(this->rows(std::move(value)));
-    }
-
-    table& header_style(const style& s) &
+    table& header_style(const style& s)
     {
         header_style_ = s;
         return *this;
     }
-    table&& header_style(const style& s) &&
-    {
-        return std::move(this->header_style(s));
-    }
-
-    table& row_style(const style& s) &
+    table& row_style(const style& s)
     {
         row_style_ = s;
         return *this;
     }
-    table&& row_style(const style& s) &&
-    {
-        return std::move(this->row_style(s));
-    }
-
     void render(canvas target) const
     {
         if (!target.valid())
