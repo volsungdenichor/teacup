@@ -10,10 +10,14 @@ TEST_CASE("spinner advances through custom frames")
 {
     surface s{ size{ 4, 1 } };
     canvas c{ s };
-    widgets::spinner value;
-    value.frames({ ".", "o", "O" }).frame(1).render(c);
+    widgets::spinner_state state{};
+    widgets::spinner_view view;
+    view.frames({ ".", "o", "O" });
+    state.frame = 1;
+    view.render(state, c);
     CHECK(s.row_text(0) == "o   ");
-    value.advance().render(c);
+    view.advance(state);
+    view.render(state, c);
     CHECK(s.row_text(0) == "O   ");
 }
 
@@ -21,11 +25,14 @@ TEST_CASE("tabs navigate and render labels")
 {
     surface s{ size{ 16, 1 } };
     canvas c{ s };
-    widgets::tabs value;
-    value.labels({ "one", "two", "three" }).selected(1).render(c);
+    widgets::tabs_state state{};
+    widgets::tabs_view view;
+    view.labels({ "one", "two", "three" });
+    state.selected = 1;
+    view.render(state, c);
     CHECK(s.row_text(0) == " one [two] three");
-    CHECK(value.update(key_event{ key::tab }));
-    CHECK(value.selected() == 2);
-    CHECK(value.update(key_event{ key::right }));
-    CHECK(value.selected() == 0);
+    CHECK(view.update(state, key_event{ key::tab }));
+    CHECK(state.selected == 2);
+    CHECK(view.update(state, key_event{ key::right }));
+    CHECK(state.selected == 0);
 }

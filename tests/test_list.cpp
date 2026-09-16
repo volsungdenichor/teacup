@@ -11,8 +11,9 @@ TEST_CASE("list widget renders a selected item")
     s.clear();
     canvas c{ s };
 
-    widgets::list items;
-    items.items({ "alpha", "beta", "gamma" }).selected(1).render(c);
+    widgets::list_state state{ { "alpha", "beta", "gamma" }, 1 };
+    widgets::list_view view;
+    view.render(state, c);
 
     CHECK(s.row_text(0) == "  alpha     ");
     CHECK(s.row_text(1) == "> beta      ");
@@ -21,13 +22,13 @@ TEST_CASE("list widget renders a selected item")
 
 TEST_CASE("list widget changes selection from key events")
 {
-    widgets::list items;
-    items.items({ "alpha", "beta", "gamma" });
+    widgets::list_state state{ { "alpha", "beta", "gamma" }, 0 };
+    widgets::list_view view;
 
-    CHECK(items.update(key_event{ key::down }));
-    CHECK(items.selected() == 1);
-    CHECK(items.update(key_event{ key::character, "k" }));
-    CHECK(items.selected() == 0);
-    CHECK(items.update(key_event{ key::end }));
-    CHECK(items.selected() == 2);
+    CHECK(view.update(state, key_event{ key::down }));
+    CHECK(state.selected == 1);
+    CHECK(view.update(state, key_event{ key::character, "k" }));
+    CHECK(state.selected == 0);
+    CHECK(view.update(state, key_event{ key::end }));
+    CHECK(state.selected == 2);
 }

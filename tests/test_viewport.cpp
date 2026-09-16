@@ -11,21 +11,24 @@ TEST_CASE("viewport renders a clipped window and scrolls by pages")
     s.clear();
     canvas c{ s };
 
-    widgets::viewport view;
-    view.lines({ "zero", "one", "two", "three", "four" }).render(c);
+    widgets::viewport_state state{ { "zero", "one", "two", "three", "four" }, 0 };
+    widgets::viewport_view view;
+    view.render(state, c);
 
     CHECK(s.row_text(0) == "zero      ");
     CHECK(s.row_text(1) == "one       ");
     CHECK(s.row_text(2) == "two       ");
 
-    view.page_down(3).render(c);
-    CHECK(view.offset() == 3);
+    view.page_down(state, 3);
+    view.render(state, c);
+    CHECK(state.offset == 3);
     CHECK(s.row_text(0) == "two       ");
     CHECK(s.row_text(1) == "three     ");
     CHECK(s.row_text(2) == "four      ");
 
-    view.offset(99).render(c);
-    CHECK(view.offset() == 5);
+    state.offset = 99;
+    view.render(state, c);
+    CHECK(state.offset == 99);
     CHECK(s.row_text(0) == "two       ");
     CHECK(s.row_text(1) == "three     ");
     CHECK(s.row_text(2) == "four      ");

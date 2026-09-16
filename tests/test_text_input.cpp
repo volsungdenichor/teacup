@@ -8,19 +8,19 @@ using namespace teacup;
 
 TEST_CASE("text input edits UTF-8 text and moves its cursor")
 {
-    widgets::text_input input;
-    input.value("ab");
+    widgets::text_input_state state{ "ab", 2 };
+    widgets::text_input_view view;
 
-    CHECK(input.update(key_event{ key::left }));
-    CHECK(input.cursor() == 1);
-    CHECK(input.update(key_event{ key::character, "é" }));
-    CHECK(input.value() == "aéb");
-    CHECK(input.update(key_event{ key::space }));
-    CHECK(input.value() == "aé b");
-    CHECK(input.update(key_event{ key::backspace }));
-    CHECK(input.value() == "aéb");
-    CHECK(input.update(key_event{ key::del }));
-    CHECK(input.value() == "aé");
+    CHECK(view.update(state, key_event{ key::left }));
+    CHECK(state.cursor == 1);
+    CHECK(view.update(state, key_event{ key::character, "é" }));
+    CHECK(state.value == "aéb");
+    CHECK(view.update(state, key_event{ key::space }));
+    CHECK(state.value == "aé b");
+    CHECK(view.update(state, key_event{ key::backspace }));
+    CHECK(state.value == "aéb");
+    CHECK(view.update(state, key_event{ key::del }));
+    CHECK(state.value == "aé");
 }
 
 TEST_CASE("text input renders a horizontally clipped cursor")
@@ -29,8 +29,9 @@ TEST_CASE("text input renders a horizontally clipped cursor")
     s.clear();
     canvas c{ s };
 
-    widgets::text_input input;
-    input.value("abcdef").render(c);
+    widgets::text_input_state state{ "abcdef", 6 };
+    widgets::text_input_view view;
+    view.render(state, c);
 
     CHECK(s.row_text(0) == "cdef ");
 }
@@ -41,8 +42,9 @@ TEST_CASE("text input renders its current value")
     s.clear();
     canvas c{ s };
 
-    widgets::text_input input;
-    input.value("edited").cursor(6).render(c);
+    widgets::text_input_state state{ "edited", 6 };
+    widgets::text_input_view view;
+    view.render(state, c);
 
     CHECK(s.row_text(0) == "edited      ");
 }
