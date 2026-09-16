@@ -12,62 +12,68 @@ namespace teacup
 namespace widgets
 {
 
-struct checkbox_state
+struct checkbox
 {
-    bool checked = false;
-};
+    struct state_type
+    {
+        bool checked = false;
+    };
 
-class checkbox_view
-{
-public:
-    checkbox_view& checked_style(const style& value)
+    class view_type
     {
-        checked_style_ = value;
-        return *this;
-    }
-    checkbox_view& unchecked_style(const style& value)
-    {
-        unchecked_style_ = value;
-        return *this;
-    }
-    checkbox_view& glyphs(std::string checked, std::string unchecked)
-    {
-        checked_glyph_ = std::move(checked);
-        unchecked_glyph_ = std::move(unchecked);
-        return *this;
-    }
-    bool update(checkbox_state& state, const key_event& event) const
-    {
-        if (event.code == key::space || event.code == key::enter)
+    public:
+        view_type& checked_style(const style& value)
         {
-            state.checked = !state.checked;
-            return true;
+            checked_style_ = value;
+            return *this;
         }
-        return false;
-    }
-    bool update(checkbox_state& state, const mouse_event& event, const rect& area) const
-    {
-        if (event.action == mouse_action::press && event.button == mouse_button::left && area.contains(event.position))
+        view_type& unchecked_style(const style& value)
         {
-            state.checked = !state.checked;
-            return true;
+            unchecked_style_ = value;
+            return *this;
         }
-        return false;
-    }
-    void render(const checkbox_state& state, canvas target) const
-    {
-        if (target.valid())
+        view_type& glyphs(std::string checked, std::string unchecked)
         {
-            target.text(0, 0, state.checked ? checked_glyph_ : unchecked_glyph_,
-                        state.checked ? checked_style_ : unchecked_style_);
+            checked_glyph_ = std::move(checked);
+            unchecked_glyph_ = std::move(unchecked);
+            return *this;
         }
-    }
+        bool update(state_type& state, const key_event& event) const
+        {
+            if (event.code == key::space || event.code == key::enter)
+            {
+                state.checked = !state.checked;
+                return true;
+            }
+            return false;
+        }
+        bool update(state_type& state, const mouse_event& event, const rect& area) const
+        {
+            if (event.action == mouse_action::press && event.button == mouse_button::left && area.contains(event.position))
+            {
+                state.checked = !state.checked;
+                return true;
+            }
+            return false;
+        }
+        void render(const state_type& state, canvas target) const
+        {
+            if (target.valid())
+            {
+                target.text(
+                    0,
+                    0,
+                    state.checked ? checked_glyph_ : unchecked_glyph_,
+                    state.checked ? checked_style_ : unchecked_style_);
+            }
+        }
 
-private:
-    std::string checked_glyph_ = "[+]";
-    std::string unchecked_glyph_ = "[ ]";
-    style checked_style_ = style{}.fg(color::hex("#a6e3a1")).bold();
-    style unchecked_style_ = style{}.fg(color::hex("#6c7086"));
+    private:
+        std::string checked_glyph_ = "[+]";
+        std::string unchecked_glyph_ = "[ ]";
+        style checked_style_ = style{}.fg(color::hex("#a6e3a1")).bold();
+        style unchecked_style_ = style{}.fg(color::hex("#6c7086"));
+    };
 };
 
 }  // namespace widgets

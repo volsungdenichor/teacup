@@ -14,58 +14,61 @@ namespace teacup
 namespace widgets
 {
 
-struct spinner_state
+struct spinner
 {
-    std::size_t frame = 0;
-};
+    struct state_type
+    {
+        std::size_t frame = 0;
+    };
 
-/// View configuration for an application-owned spinner_state.
-class spinner_view
-{
-public:
-    using renderer_fn = std::function<void(const spinner_state&, canvas)>;
+    /// View configuration for an application-owned spinner_state.
+    class view_type
+    {
+    public:
+        using renderer_fn = std::function<void(const state_type&, canvas)>;
 
-    spinner_view& frames(std::vector<std::string> value)
-    {
-        frames_ = std::move(value);
-        return *this;
-    }
-    spinner_view& style(const teacup::style& value)
-    {
-        style_ = value;
-        return *this;
-    }
-
-    spinner_view& renderer(renderer_fn value)
-    {
-        renderer_ = std::move(value);
-        return *this;
-    }
-    void advance(spinner_state& state) const
-    {
-        if (!frames_.empty())
+        view_type& frames(std::vector<std::string> value)
         {
-            state.frame = (state.frame + 1) % frames_.size();
+            frames_ = std::move(value);
+            return *this;
         }
-    }
-    void render(const spinner_state& state, canvas target) const
-    {
-        if (renderer_)
+        view_type& style(const teacup::style& value)
         {
-            renderer_(state, target);
-            return;
+            style_ = value;
+            return *this;
         }
-        if (!target.valid() || frames_.empty())
-        {
-            return;
-        }
-        target.text(0, 0, frames_[state.frame % frames_.size()], style_);
-    }
 
-private:
-    std::vector<std::string> frames_{ "|", "/", "-", "\\" };
-    teacup::style style_;
-    renderer_fn renderer_;
+        view_type& renderer(renderer_fn value)
+        {
+            renderer_ = std::move(value);
+            return *this;
+        }
+        void advance(state_type& state) const
+        {
+            if (!frames_.empty())
+            {
+                state.frame = (state.frame + 1) % frames_.size();
+            }
+        }
+        void render(const state_type& state, canvas target) const
+        {
+            if (renderer_)
+            {
+                renderer_(state, target);
+                return;
+            }
+            if (!target.valid() || frames_.empty())
+            {
+                return;
+            }
+            target.text(0, 0, frames_[state.frame % frames_.size()], style_);
+        }
+
+    private:
+        std::vector<std::string> frames_{ "|", "/", "-", "\\" };
+        teacup::style style_;
+        renderer_fn renderer_;
+    };
 };
 
 }  // namespace widgets
