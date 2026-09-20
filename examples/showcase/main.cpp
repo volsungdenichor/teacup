@@ -58,17 +58,17 @@ teacup::layout::node showcase_tree()
                 fixed(14, leaf("spinner")),
             })),
             flex(space()),
-            fixed(1, leaf("tabs")),
+            fixed(1, focusable("tabs")),
         })))),
         flex(row({
             percent(42, named("navigation", inset(2, column({
-                fixed(6, leaf("menu")),
-                flex(leaf("players")),
+                fixed(6, focusable("menu")),
+                flex(focusable("players")),
             }, 1)))),
             flex(named("components", inset(2, column({
                 fixed(1, leaf("progress")),
                 fixed(4, leaf("table")),
-                fixed(5, named("input-box", inset(1, leaf("input")))),
+                fixed(5, named("input-box", inset(1, focusable("input")))),
             }, 1)))),
         }, 1)),
         fixed(1, leaf("footer")),
@@ -113,30 +113,42 @@ teacup::update_result<model> update(model m, const teacup::message& message)
         = teacup::layout::resolve(showcase_tree(), teacup::rect::from_size(m.screen_size));
     players_view.item_height(3).viewport_height(areas.get("players").height);
 
-    // The menu is the hub: its selection decides which widget is focused.
-    const auto focus_from_menu = [&]
+    // Focus is authoritative; the menu selection mirrors it so the hub
+    // highlights the active widget. Enter on the hub activates (focuses) the
+    // selected widget; enter on a widget backs out to the hub.
+    const auto sync_menu_to_focus = [&]
+    {
+        const std::string& f = m.events.focus().focused();
+        m.menu.selected = f == "input" ? 1 : f == "players" ? 2 : 0;
+    };
+    const auto activate_menu = [&]
     {
         m.events.focus().set(m.menu.selected == 1 ? "input" : m.menu.selected == 2 ? "players" : "menu");
     };
 
+    m.events.clear();  // rebind against this frame's model copy
+    m.events.add("menu", teacup::route_keys(m.menu, menu_view));
     m.events.add("tabs", teacup::route_keys(m.tabs, tabs_view));
     m.events.add("tabs", teacup::route_mouse(m.tabs, tabs_view.labels({ "gallery", "layout", "events" }), "tabs"));
     m.events.add("players", teacup::route_keys(m.players, players_view));
     m.events.add("players", teacup::route_mouse(m.players, players_view, "players"));
+    m.events.add("input", teacup::route_keys(m.input, input_view));
     m.events.add("input", teacup::route_mouse(m.input, input_view, "input"));
+    // Establish the ring from the tree once; the menu hub starts focused.
     if (m.events.focus().order().empty())
     {
-        m.events.focus_order({ "tabs", "menu", "players", "input" });
+        m.events.focus_order(areas.focus_order());
+        m.events.focus().set("menu");
     }
 
     if (const auto* mouse = teacup::msg_cast<teacup::mouse_event>(message))
     {
         m.last_mouse = std::to_string(mouse->position.x) + "," + std::to_string(mouse->position.y);
+        m.events.route(message, areas);
         if (menu_view.update(m.menu, *mouse, areas.get("menu")))
         {
-            focus_from_menu();
+            activate_menu();  // clicking a menu row jumps focus to it
         }
-        m.events.route(message, areas);
         viewport_view.update(m.viewport, *mouse, areas.get("players"));
         if (mouse->action == teacup::mouse_action::press && mouse->button == teacup::mouse_button::left)
         {
@@ -189,10 +201,20 @@ teacup::update_result<model> update(model m, const teacup::message& message)
         const std::string was_focused = m.events.focus().focused();
         const bool consumed = m.events.route(message, areas);
 
-        // Enter backs out of an editing widget to the menu hub.
-        if (key->code == teacup::key::enter && (was_focused == "input" || was_focused == "players" || was_focused == "tabs"))
+        if (key->code == teacup::key::enter)
         {
-            m.events.focus().set("menu");
+            // Enter on the hub activates the selection; enter on a focused
+            // widget backs out to the hub, leaving the selection on the
+            // widget just left so it is easy to re-enter.
+            if (was_focused == "menu")
+            {
+                activate_menu();
+            }
+            else
+            {
+                m.menu.selected = was_focused == "input" ? 1 : was_focused == "players" ? 2 : 0;
+                m.events.focus().set("menu");
+            }
             return teacup::next(m);
         }
 
@@ -214,35 +236,18 @@ teacup::update_result<model> update(model m, const teacup::message& message)
             return teacup::next(m);
         }
 
-        // The menu hub sees every key the focused widget did not consume;
-        // its selection drives focus (arrows move it, enter activates).
-        if (!consumed && menu_view.update(m.menu, *key))
-        {
-            focus_from_menu();
-            return teacup::next(m);
-        }
-        if (!consumed && key->code == teacup::key::enter)
-        {
-            focus_from_menu();
-            return teacup::next(m);
-        }
-
-        // Typing while the menu points at "text input" starts editing.
-        if (!consumed && m.menu.selected == 1
+        // Typing while the menu hub points at "text input" starts editing.
+        if (!consumed && m.events.focus().is("menu") && m.menu.selected == 1
             && (key->code == teacup::key::character || key->code == teacup::key::space || key->code == teacup::key::backspace
                 || key->code == teacup::key::del || key->code == teacup::key::home || key->code == teacup::key::end))
         {
             m.events.focus().set("input");
+            sync_menu_to_focus();
             input_view.update(m.input, *key);
             return teacup::next(m);
         }
     }
     return teacup::next(m);
-}
-
-void heading(teacup::canvas target, const std::string& title, const teacup::color& color)
-{
-    teacup::widgets::text{ title }.style(teacup::style{}.fg(color).bold()).render(target);
 }
 
 void view(const model& m, teacup::canvas screen)

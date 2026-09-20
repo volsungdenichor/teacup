@@ -23,6 +23,8 @@ struct tabs
     };
 
     /// View and interaction logic for an application-owned tabs_state.
+    /// Left/right cycle labels; `key::tab` is focus navigation owned by the
+    /// router and is intentionally not handled here.
     class view_type
     {
     public:
@@ -62,7 +64,7 @@ struct tabs
                 state.selected = (state.selected + static_cast<int>(labels_.size()) - 1) % static_cast<int>(labels_.size());
                 return true;
             }
-            if (event.code == key::right || event.code == key::tab || event.matches("tab"))
+            if (event.code == key::right)
             {
                 state.selected = (state.selected + 1) % static_cast<int>(labels_.size());
                 return true;

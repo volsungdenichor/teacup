@@ -87,7 +87,7 @@ TEST_CASE("tabs and spinner views update application-owned state")
     widgets::tabs::state_type tabs_state{};
     widgets::tabs::view_type tabs_view;
     tabs_view.labels({ "one", "two" });
-    REQUIRE(tabs_view.update(tabs_state, key_event{ key::tab }));
+    REQUIRE(tabs_view.update(tabs_state, key_event{ key::right }));
     CHECK(tabs_state.selected == 1);
 
     widgets::spinner::state_type spinner_state{};

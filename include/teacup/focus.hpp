@@ -176,25 +176,29 @@ public:
     /// updates; they run only when the widget consumed the event.
     using handler = std::function<bool(const message&, const areas&)>;
 
-    /// Binds `fn` to `id`. A later `add` for the same id replaces the first.
+    /// Binds `fn` to `id`. Multiple handlers may share an id (e.g. one for
+    /// keys, one for mouse); each event is offered to all of them in turn.
     router& add(std::string id, handler fn)
     {
-        auto it = std::find_if(handlers_.begin(), handlers_.end(),
-                               [&](const entry& e) { return e.id == id; });
-        if (it != handlers_.end())
-        {
-            it->fn = std::move(fn);
-            return *this;
-        }
         handlers_.push_back(entry{ std::move(id), std::move(fn) });
         return *this;
     }
 
+    /// Drops every handler. Apps that rebind against a by-value model each
+    /// update call this first so handlers never accumulate across frames.
+    router& clear()
+    {
+        handlers_.clear();
+        return *this;
+    }
+
     /// Sets (or replaces) the focus ring used for key routing and tab cycling.
+    /// When not called, the router adopts the layout's `focus_order()`.
     router& focus_order(std::vector<std::string> order, widget_traits traits = {})
     {
         focus_ = focus_ring(std::move(order));
         focus_.traits(std::move(traits));
+        explicit_order_ = true;
         return *this;
     }
 
@@ -216,18 +220,30 @@ public:
     /// every widget.
     bool route(const message& msg, const areas& layout, bool cycle_tab = true)
     {
+        if (!explicit_order_ && focus_.order().empty() && !layout.focus_order().empty())
+        {
+            // No explicit order: adopt the focusable ids from the layout tree.
+            focus_ = focus_ring(layout.focus_order());
+        }
         if (const auto* key = msg_cast<key_event>(msg))
         {
+            // Tab is focus navigation: the router owns it and never forwards
+            // it to widgets, even ones that would otherwise accept it.
             if (cycle_tab && key->code == key::tab)
             {
                 focus_.advance(has(key->modifiers, modifier::shift) ? -1 : 1);
                 return true;
             }
-            if (const handler* fn = find(focus_.focused()))
+            // Offer the key to every handler bound to the focused id.
+            bool consumed = false;
+            for (const entry& e : handlers_)
             {
-                return (*fn)(msg, layout);
+                if (e.id == focus_.focused())
+                {
+                    consumed = e.fn(msg, layout) || consumed;
+                }
             }
-            return false;
+            return consumed;
         }
         if (const auto* mouse = msg_cast<mouse_event>(msg))
         {
@@ -237,7 +253,7 @@ public:
                 // the first id that is both bound and focusable.
                 for (const std::string* id = layout.hit(mouse->position); id != nullptr; id = layout.parent(*id))
                 {
-                    if (find(*id) != nullptr && focus_.set(*id))
+                    if (has_handler(*id) && focus_.set(*id))
                     {
                         break;
                     }
@@ -259,20 +275,22 @@ private:
         handler fn;
     };
 
-    [[nodiscard]] const handler* find(const std::string& id) const
+    /// True when at least one handler is bound to `id`.
+    [[nodiscard]] bool has_handler(const std::string& id) const
     {
         for (const entry& e : handlers_)
         {
             if (e.id == id)
             {
-                return &e.fn;
+                return true;
             }
         }
-        return nullptr;
+        return false;
     }
 
     std::vector<entry> handlers_;
     focus_ring focus_;
+    bool explicit_order_ = false;
 };
 
 /// Builds a handler that forwards key events to `view.update(state, key)`

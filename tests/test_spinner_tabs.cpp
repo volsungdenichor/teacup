@@ -31,7 +31,7 @@ TEST_CASE("tabs navigate and render labels")
     state.selected = 1;
     view.render(state, c);
     CHECK(s.row_text(0) == " one [two] three");
-    CHECK(view.update(state, key_event{ key::tab }));
+    CHECK(view.update(state, key_event{ key::right }));
     CHECK(state.selected == 2);
     CHECK(view.update(state, key_event{ key::right }));
     CHECK(state.selected == 0);

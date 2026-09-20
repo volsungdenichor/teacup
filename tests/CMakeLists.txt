@@ -14,6 +14,7 @@ add_executable(teacup_tests
     test_layout.cpp
     test_layout_tree.cpp
     test_list.cpp
+    test_showcase_keys.cpp
     test_table.cpp
     test_spinner_tabs.cpp
     test_text.cpp

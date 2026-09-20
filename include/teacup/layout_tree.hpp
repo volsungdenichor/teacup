@@ -37,6 +37,7 @@ struct node
 
     kind type = kind::leaf;
     std::string id;               ///< when non-empty, the node's rect is registered in `areas`
+    bool focusable = false;       ///< when true, the id joins the tab order in `areas::focus_order`
     std::vector<child> children;  ///< row/column children; inset uses the first child
     int gap = 0;                  ///< row/column: cells between children
     int margin = 0;               ///< inset: cells shaved off each side
@@ -55,6 +56,21 @@ inline node leaf(std::string id)
     node n;
     n.id = std::move(id);
     return n;
+}
+
+/// A leaf that participates in tab focus.
+inline node focusable(std::string id)
+{
+    node n = leaf(std::move(id));
+    n.focusable = true;
+    return n;
+}
+
+/// Marks any node (leaf or container) as a tab stop.
+inline node focusable(node content)
+{
+    content.focusable = true;
+    return content;
 }
 
 /// An unnamed leaf: occupies space without registering a rect.
@@ -181,6 +197,12 @@ public:
         return nullptr;
     }
 
+    /// The ids declared `focusable`, in declaration order — the tab order.
+    [[nodiscard]] const std::vector<std::string>& focus_order() const
+    {
+        return focusable_;
+    }
+
     [[nodiscard]] std::size_t size() const
     {
         return entries_.size();
@@ -206,6 +228,7 @@ private:
 
     std::vector<value_type> entries_;
     std::vector<std::pair<std::string, std::string>> parents_;  // id → enclosing named id ("" at the root)
+    std::vector<std::string> focusable_;                        // focusable ids in declaration order
 };
 
 /// Resolves `root` against `screen`, in declaration (pre-order) order.
@@ -224,6 +247,10 @@ inline void areas::resolve_node(const node& n, const rect& area, areas& out, con
         out.entries_.emplace_back(n.id, area);
         out.parents_.emplace_back(n.id, enclosing);
         innermost = n.id;
+    }
+    if (n.focusable && !n.id.empty())
+    {
+        out.focusable_.push_back(n.id);
     }
     switch (n.type)
     {

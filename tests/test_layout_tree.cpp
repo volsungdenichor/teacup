@@ -101,3 +101,23 @@ TEST_CASE("missing names are reported")
     CHECK(areas.find("nope") == nullptr);
     CHECK_THROWS_AS(areas.get("nope"), std::out_of_range);
 }
+
+TEST_CASE("focusable leaves surface a tab order")
+{
+    using namespace layout;
+    const areas areas = resolve(
+        column({
+            fixed(1, leaf("title")),
+            flex(focusable("body")),
+            fixed(1, focusable(named("status", row({
+                flex(focusable("ok")),
+                flex(leaf("plain")),
+            })))),
+        }),
+        rect{ 0, 0, 10, 4 });
+
+    REQUIRE(areas.focus_order().size() == 3);
+    CHECK(areas.focus_order()[0] == "body");
+    CHECK(areas.focus_order()[1] == "status");  // a container can be a tab stop
+    CHECK(areas.focus_order()[2] == "ok");
+}

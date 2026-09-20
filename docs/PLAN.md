@@ -127,7 +127,10 @@ widgets enabled/disabled and focusable (disabled implies not focusable; both
 are skipped by tab cycling and rejected for mouse focus), and a `router`
 binds ids to `route_keys` / `route_mouse` handlers — key events go to the
 focused widget only, mouse presses focus the hit area, and disabled widgets
-receive no input and are painted with `disabled_overlay()`.
+receive no input and are painted with `disabled_overlay()`. Layout nodes
+declared `layout::focusable(...)` supply the tab order via
+`areas::focus_order()`, which the router adopts automatically when the app
+does not set an explicit order.
 
 ## 5. Aesthetics toolkit
 
