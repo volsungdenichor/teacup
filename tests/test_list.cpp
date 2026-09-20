@@ -11,8 +11,8 @@ TEST_CASE("list widget renders a selected item")
     s.clear();
     canvas c{ s };
 
-    widgets::list_state state{ { "alpha", "beta", "gamma" }, 1 };
-    widgets::list_view view;
+    widgets::list<std::string>::state_type state{ { "alpha", "beta", "gamma" }, 1 };
+    widgets::list<std::string>::view_type view;
     view.render(state, c);
 
     CHECK(s.row_text(0) == "  alpha     ");
@@ -22,8 +22,8 @@ TEST_CASE("list widget renders a selected item")
 
 TEST_CASE("list widget changes selection from key events")
 {
-    widgets::list_state state{ { "alpha", "beta", "gamma" }, 0 };
-    widgets::list_view view;
+    widgets::list<std::string>::state_type state{ { "alpha", "beta", "gamma" }, 0 };
+    widgets::list<std::string>::view_type view;
 
     CHECK(view.update(state, key_event{ key::down }));
     CHECK(state.selected == 1);

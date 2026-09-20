@@ -11,8 +11,8 @@ TEST_CASE("viewport renders a clipped window and scrolls by pages")
     s.clear();
     canvas c{ s };
 
-    widgets::viewport_state state{ { "zero", "one", "two", "three", "four" }, 0 };
-    widgets::viewport_view view;
+    widgets::viewport::state_type state{ { "zero", "one", "two", "three", "four" }, 0 };
+    widgets::viewport::view_type view;
     view.render(state, c);
 
     CHECK(s.row_text(0) == "zero      ");

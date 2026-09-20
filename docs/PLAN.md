@@ -114,6 +114,13 @@ int main() { return teacup::run(teacup::make_app(model{}, init, update, view)); 
 Layout helpers (pure, operate on `rect`): `split_horizontal/vertical` with
 fixed / percentage / flexible constraints, `padded`, `centered`, `align`.
 
+`layout_tree` builds on those primitives: a declarative, named tree
+(`layout::row` / `column` / `inset` / `leaf`) resolved once per frame into
+`layout::areas` — an id → rect map with `hit(point)` for mouse routing. The
+same tree drives `update` (event dispatch) and `view` (painting), so the two
+can never disagree about where a widget lives. Resolution is pure integer
+math; the tree owns no canvas or widget state.
+
 ## 5. Aesthetics toolkit
 
 - `border`: `plain`, `rounded`, `thick`, `double`, `ascii` glyph sets + per-side toggles.

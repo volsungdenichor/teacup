@@ -22,8 +22,8 @@ struct menu_item
 
 TEST_CASE("list view updates application-owned list state")
 {
-    widgets::list_state state{ { "one", "two" }, 0 };
-    widgets::list_view view;
+    widgets::list<std::string>::state_type state{ { "one", "two" }, 0 };
+    widgets::list<std::string>::view_type view;
 
     REQUIRE(view.update(state, key_event{ key::down }));
     CHECK(state.selected == 1);
@@ -35,8 +35,8 @@ TEST_CASE("generic list view renders widget-like items")
     s.clear();
     canvas c{ s };
 
-    widgets::basic_list_state<menu_item> state{ { { "first" }, { "second" } }, 1 };
-    widgets::basic_list_view<menu_item> view;
+    widgets::list<menu_item>::state_type state{ { { "first" }, { "second" } }, 1 };
+    widgets::list<menu_item>::view_type view;
     view.item_renderer([](const menu_item& item, canvas row, const style& item_style, bool selected) {
         row.text(0, 0, (selected ? "[" : " ") + item.label + (selected ? "]" : " "), item_style);
     });
@@ -52,8 +52,8 @@ TEST_CASE("list view allows replacing the default string renderer")
     s.clear();
     canvas c{ s };
 
-    widgets::list_state state{ { "one", "two" }, 1 };
-    widgets::list_view view;
+    widgets::list<std::string>::state_type state{ { "one", "two" }, 1 };
+    widgets::list<std::string>::view_type view;
     view.item_renderer([](const std::string& item, canvas row, const style& item_style, bool selected) {
         row.text(0, 0, (selected ? "[" : " ") + item + (selected ? "]" : " "), item_style);
     });
@@ -65,8 +65,8 @@ TEST_CASE("list view allows replacing the default string renderer")
 
 TEST_CASE("text input view updates application-owned text state")
 {
-    widgets::text_input_state state{ "ab", 2 };
-    widgets::text_input_view view;
+    widgets::text_input::state_type state{ "ab", 2 };
+    widgets::text_input::view_type view;
 
     REQUIRE(view.update(state, key_event{ key::space }));
     CHECK(state.value == "ab ");
@@ -75,8 +75,8 @@ TEST_CASE("text input view updates application-owned text state")
 
 TEST_CASE("viewport view updates application-owned scroll state")
 {
-    widgets::viewport_state state{ { "one", "two", "three" }, 0 };
-    widgets::viewport_view view;
+    widgets::viewport::state_type state{ { "one", "two", "three" }, 0 };
+    widgets::viewport::view_type view;
 
     view.page_down(state, 2);
     CHECK(state.offset == 2);
@@ -84,14 +84,14 @@ TEST_CASE("viewport view updates application-owned scroll state")
 
 TEST_CASE("tabs and spinner views update application-owned state")
 {
-    widgets::tabs_state tabs_state{};
-    widgets::tabs_view tabs_view;
+    widgets::tabs::state_type tabs_state{};
+    widgets::tabs::view_type tabs_view;
     tabs_view.labels({ "one", "two" });
     REQUIRE(tabs_view.update(tabs_state, key_event{ key::tab }));
     CHECK(tabs_state.selected == 1);
 
-    widgets::spinner_state spinner_state{};
-    widgets::spinner_view spinner_view;
+    widgets::spinner::state_type spinner_state{};
+    widgets::spinner::view_type spinner_view;
     spinner_view.frames({ ".", "o" });
     spinner_view.advance(spinner_state);
     CHECK(spinner_state.frame == 1);
@@ -99,24 +99,24 @@ TEST_CASE("tabs and spinner views update application-owned state")
 
 TEST_CASE("widget views respond to mouse events")
 {
-    widgets::list_state list_state{ { "one", "two", "three" }, 0 };
-    widgets::list_view list_view;
+    widgets::list<std::string>::state_type list_state{ { "one", "two", "three" }, 0 };
+    widgets::list<std::string>::view_type list_view;
     CHECK(list_view.update(list_state, mouse_event{ point{ 2, 1 }, mouse_button::left, mouse_action::press }, rect{ 0, 0, 8, 3 }));
     CHECK(list_state.selected == 1);
 
-    widgets::tabs_state tabs_state{};
-    widgets::tabs_view tabs_view;
+    widgets::tabs::state_type tabs_state{};
+    widgets::tabs::view_type tabs_view;
     tabs_view.labels({ "one", "two" });
     CHECK(tabs_view.update(tabs_state, mouse_event{ point{ 6, 0 }, mouse_button::left, mouse_action::press }, rect{ 0, 0, 12, 1 }));
     CHECK(tabs_state.selected == 1);
 
-    widgets::viewport_state viewport_state{ { "one", "two", "three" }, 1 };
-    widgets::viewport_view viewport_view;
+    widgets::viewport::state_type viewport_state{ { "one", "two", "three" }, 1 };
+    widgets::viewport::view_type viewport_view;
     CHECK(viewport_view.update(viewport_state, mouse_event{ point{ 0, 0 }, mouse_button::wheel_up, mouse_action::press }, rect{ 0, 0, 8, 2 }));
     CHECK(viewport_state.offset == 0);
 
-    widgets::text_input_state input_state{ "abc", 0 };
-    widgets::text_input_view input_view;
+    widgets::text_input::state_type input_state{ "abc", 0 };
+    widgets::text_input::view_type input_view;
     CHECK(input_view.update(input_state, mouse_event{ point{ 2, 0 }, mouse_button::left, mouse_action::press }, rect{ 0, 0, 8, 1 }));
     CHECK(input_state.cursor == 2);
 }
@@ -136,8 +136,8 @@ TEST_CASE("widgets allow custom rendering into the allocated canvas")
 
 TEST_CASE("checkbox view toggles from keyboard and mouse")
 {
-    widgets::checkbox_state state{ false };
-    widgets::checkbox_view view;
+    widgets::checkbox::state_type state{ false };
+    widgets::checkbox::view_type view;
 
     REQUIRE(view.update(state, key_event{ key::space }));
     CHECK(state.checked);
@@ -149,8 +149,8 @@ TEST_CASE("generic list allocates multi-line item regions")
 {
     surface s{ size{ 12, 4 } };
     s.clear();
-    widgets::basic_list_state<menu_item> state{ { { "first" }, { "second" } }, 0 };
-    widgets::basic_list_view<menu_item> view;
+    widgets::list<menu_item>::state_type state{ { { "first" }, { "second" } }, 0 };
+    widgets::list<menu_item>::view_type view;
     view.item_height(2).item_renderer([](const menu_item& item, canvas row, const style& style, bool) {
         row.text(0, 0, item.label, style);
         row.text(0, 1, "detail", style);
@@ -167,8 +167,8 @@ TEST_CASE("generic list scrolls multi-line item regions")
 {
     surface s{ size{ 12, 4 } };
     s.clear();
-    widgets::basic_list_state<menu_item> state{ { { "first" }, { "second" }, { "third" } }, 0 };
-    widgets::basic_list_view<menu_item> view;
+    widgets::list<menu_item>::state_type state{ { { "first" }, { "second" }, { "third" } }, 0 };
+    widgets::list<menu_item>::view_type view;
     view.item_height(2).item_renderer([](const menu_item& item, canvas row, const style& style, bool) {
         row.text(0, 0, item.label, style);
         row.text(0, 1, "detail", style);
@@ -183,8 +183,8 @@ TEST_CASE("generic list scrolls multi-line item regions")
 
 TEST_CASE("generic list keeps the selected item visible")
 {
-    widgets::basic_list_state<menu_item> state{ { { "first" }, { "second" }, { "third" } }, 0 };
-    widgets::basic_list_view<menu_item> view;
+    widgets::list<menu_item>::state_type state{ { { "first" }, { "second" }, { "third" } }, 0 };
+    widgets::list<menu_item>::view_type view;
     view.item_height(2);
 
     view.update(state, key_event{ key::end });
@@ -196,9 +196,9 @@ TEST_CASE("generic list keeps the selected item visible")
 
 TEST_CASE("generic list scrolls enough to reveal the last item")
 {
-    widgets::basic_list_state<menu_item> state{
+    widgets::list<menu_item>::state_type state{
         { { "first" }, { "second" }, { "third" } }, 0 };
-    widgets::basic_list_view<menu_item> view;
+    widgets::list<menu_item>::view_type view;
     view.item_height(2).item_renderer([](const menu_item& item, canvas row, const style& style, bool) {
         row.text(0, 0, item.label, style);
         row.text(0, 1, "detail", style);

@@ -10,6 +10,7 @@
 #include "teacup/event.hpp"
 #include "teacup/geometry.hpp"
 #include "teacup/layout.hpp"
+#include "teacup/layout_tree.hpp"
 #include "teacup/message.hpp"
 #include "teacup/program.hpp"
 #include "teacup/style.hpp"

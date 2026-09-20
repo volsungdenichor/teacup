@@ -10,8 +10,8 @@ TEST_CASE("spinner advances through custom frames")
 {
     surface s{ size{ 4, 1 } };
     canvas c{ s };
-    widgets::spinner_state state{};
-    widgets::spinner_view view;
+    widgets::spinner::state_type state{};
+    widgets::spinner::view_type view;
     view.frames({ ".", "o", "O" });
     state.frame = 1;
     view.render(state, c);
@@ -25,8 +25,8 @@ TEST_CASE("tabs navigate and render labels")
 {
     surface s{ size{ 16, 1 } };
     canvas c{ s };
-    widgets::tabs_state state{};
-    widgets::tabs_view view;
+    widgets::tabs::state_type state{};
+    widgets::tabs::view_type view;
     view.labels({ "one", "two", "three" });
     state.selected = 1;
     view.render(state, c);

@@ -47,30 +47,34 @@ struct model
     teacup::widgets::list<Player>::state_type players;
 };
 
-struct showcase_layout
+/// The single source of truth for widget placement, shared by `update`
+/// (hit-testing) and `view` (painting) so the two can never drift apart.
+/// The inset nodes mirror each block's border + padding.
+teacup::layout::node showcase_tree()
 {
-    teacup::rect tabs;
-    teacup::rect menu;
-    teacup::rect viewport;
-    teacup::rect input;
-};
-
-showcase_layout layout_for(teacup::size screen_size)
-{
-    using namespace teacup;
-    const rect screen = rect::from_size(screen_size);
-    const auto rows = split_vertical(screen, { constraint::fixed(7), constraint::flex(), constraint::fixed(1) });
-    const auto columns = split_horizontal(rows[1], { constraint::percent(42), constraint::flex() }, 1);
-    const rect header_inner = rows[0].inset(2);
-    const rect navigation_inner = columns[0].inset(2);
-    const rect components_inner = columns[1].inset(2);
-    const auto navigation_areas = split_vertical(navigation_inner, { constraint::fixed(6), constraint::flex() }, 1);
-    const auto component_areas
-        = split_vertical(components_inner, { constraint::fixed(1), constraint::fixed(4), constraint::fixed(5) }, 1);
-    return { rect{ header_inner.x, header_inner.y + 2, header_inner.width, 1 },
-             navigation_areas[0],
-             navigation_areas[1],
-             component_areas[2].inset(1) };
+    using namespace teacup::layout;
+    return column({
+        fixed(7, named("header", inset(2, column({
+            fixed(1, row({
+                flex(leaf("title")),
+                fixed(14, leaf("spinner")),
+            })),
+            flex(space()),
+            fixed(1, leaf("tabs")),
+        })))),
+        flex(row({
+            percent(42, named("navigation", inset(2, column({
+                fixed(6, leaf("menu")),
+                flex(leaf("players")),
+            }, 1)))),
+            flex(named("components", inset(2, column({
+                fixed(1, leaf("progress")),
+                fixed(4, leaf("table")),
+                fixed(5, named("input-box", inset(1, leaf("input")))),
+            }, 1)))),
+        }, 1)),
+        fixed(1, leaf("footer")),
+    });
 }
 
 void render_player(const Player& player, teacup::canvas row, const teacup::style&, bool selected)
@@ -131,43 +135,53 @@ teacup::update_result<model> update(model m, const teacup::message& message)
         m.players_focused = false;
         m.tabs_focused = true;
     };
-    players_view.item_height(3).viewport_height(layout_for(m.screen_size).viewport.height);
+    const teacup::layout::areas areas
+        = teacup::layout::resolve(showcase_tree(), teacup::rect::from_size(m.screen_size));
+    players_view.item_height(3).viewport_height(areas.get("players").height);
 
     if (const auto* mouse = teacup::msg_cast<teacup::mouse_event>(message))
     {
-        const auto layout = layout_for(m.screen_size);
         m.last_mouse = std::to_string(mouse->position.x) + "," + std::to_string(mouse->position.y);
-        if (menu_view.update(m.menu, *mouse, layout.menu))
+        if (menu_view.update(m.menu, *mouse, areas.get("menu")))
         {
             if (m.menu.selected == 1)
+            {
                 focus_input();
+            }
             else if (m.menu.selected == 2)
+            {
                 focus_players();
+            }
             else
+            {
                 focus_menu();
+            }
         }
-        if (tabs_view.labels({ "gallery", "layout", "events" }).update(m.tabs, *mouse, layout.tabs))
+        if (tabs_view.labels({ "gallery", "layout", "events" }).update(m.tabs, *mouse, areas.get("tabs")))
         {
             focus_tabs();
         }
-        viewport_view.update(m.viewport, *mouse, layout.viewport);
-        if (players_view.update(m.players, *mouse, layout.viewport))
+        viewport_view.update(m.viewport, *mouse, areas.get("players"));
+        if (players_view.update(m.players, *mouse, areas.get("players")))
         {
             focus_players();
             m.menu.selected = 2;
         }
-        if (mouse->action == teacup::mouse_action::press && mouse->button == teacup::mouse_button::left
-            && layout.viewport.contains(mouse->position))
+        if (mouse->action == teacup::mouse_action::press && mouse->button == teacup::mouse_button::left)
         {
-            const int row = m.players.offset * 3 + mouse->position.y - layout.viewport.y;
-            const int item = row / 3;
-            if (row % 3 == 2 && item >= 0 && item < static_cast<int>(m.players.items.size()))
+            if (const std::string* target = areas.hit(mouse->position);
+                target != nullptr && *target == "players")
             {
-                m.players.items[static_cast<std::size_t>(item)].living
-                    = !m.players.items[static_cast<std::size_t>(item)].living;
+                const int row = m.players.offset * 3 + mouse->position.y - areas.get("players").y;
+                const int item = row / 3;
+                if (row % 3 == 2 && item >= 0 && item < static_cast<int>(m.players.items.size()))
+                {
+                    m.players.items[static_cast<std::size_t>(item)].living
+                        = !m.players.items[static_cast<std::size_t>(item)].living;
+                }
             }
         }
-        if (input_view.update(m.input, *mouse, layout.input))
+        if (input_view.update(m.input, *mouse, areas.get("input")))
         {
             focus_input();
             m.menu.selected = 1;
@@ -268,7 +282,7 @@ teacup::update_result<model> update(model m, const teacup::message& message)
                 players_view.update(m.players, *key);
                 return teacup::next(m);
             }
-            const int height = layout_for(m.screen_size).viewport.height;
+            const int height = areas.get("players").height;
             if (key->code == teacup::key::page_up)
             {
                 players_view.page_up(m.players, height);
@@ -341,7 +355,7 @@ void view(const model& m, teacup::canvas screen)
     using namespace teacup;
 
     screen.fill(" ", style{}.bg(palette::surface()));
-    const auto rows = split_vertical(screen.bounds(), { constraint::fixed(7), constraint::flex(), constraint::fixed(1) });
+    const layout::areas areas = layout::resolve(showcase_tree(), screen.bounds());
 
     widgets::block{}
         .border(border::rounded())
@@ -351,13 +365,12 @@ void view(const model& m, teacup::canvas screen)
         .title_align(align::center)
         .padding(1)
         .render(
-            screen.sub(rows[0]),
-            [&](canvas inner)
+            screen.sub(areas.get("header")),
+            [&](canvas)
             {
-                const auto header = split_horizontal(inner.bounds(), { constraint::flex(), constraint::fixed(14) });
                 widgets::text{ "A small, living tour of the teacup toolkit" }
                     .style(style{}.fg(palette::text()).bold())
-                    .render(inner.sub(header[0]));
+                    .render(screen.sub(areas.get("title")));
                 widgets::spinner::view_type{}
                     .frames({ "⠋ live",
                               "⠙ live",
@@ -370,15 +383,13 @@ void view(const model& m, teacup::canvas screen)
                               "⠇ live",
                               "⠏ live" })
                     .style(style{}.fg(palette::accent()))
-                    .render(m.spinner, inner.sub(header[1]));
+                    .render(m.spinner, screen.sub(areas.get("spinner")));
                 widgets::tabs::view_type{}
                     .labels({ "gallery", "layout", "events" })
                     .tab_style(style{}.fg(palette::subtle()))
                     .selected_style(style{}.fg(palette::text()).bg(palette::accent()).bold())
-                    .render(m.tabs, inner.sub(rect{ 0, 2, inner.width(), 1 }));
+                    .render(m.tabs, screen.sub(areas.get("tabs")));
             });
-
-    const auto columns = split_horizontal(rows[1], { constraint::percent(42), constraint::flex() }, 1);
 
     widgets::block{}
         .border(border::rounded())
@@ -387,24 +398,23 @@ void view(const model& m, teacup::canvas screen)
         .title_style(style{}.fg(palette::subtle()))
         .padding(1)
         .render(
-            screen.sub(columns[0]),
-            [&](canvas inner)
+            screen.sub(areas.get("navigation")),
+            [&](canvas)
             {
-                const auto areas = split_vertical(inner.bounds(), { constraint::fixed(6), constraint::flex() }, 1);
                 widgets::list<std::string>::view_type{}
                     .selected_style(
                         m.input_focused || m.players_focused || m.tabs_focused
                             ? style{}.fg(palette::accent()).bold()
                             : style{}.fg(palette::surface()).bg(palette::accent()).bold())
                     .item_style(style{}.fg(palette::text()))
-                    .render(m.menu, inner.sub(areas[0]));
+                    .render(m.menu, screen.sub(areas.get("menu")));
 
                 widgets::list<Player>::view_type{}
                     .item_height(3)
                     .selected_style(style{}.bg(color::hex("#313244")))
                     .item_style(style{}.fg(palette::text()))
                     .item_renderer(render_player)
-                    .render(m.players, inner.sub(areas[1]));
+                    .render(m.players, screen.sub(areas.get("players")));
             });
 
     widgets::block{}
@@ -414,22 +424,20 @@ void view(const model& m, teacup::canvas screen)
         .title_style(style{}.fg(palette::subtle()))
         .padding(1)
         .render(
-            screen.sub(columns[1]),
-            [&](canvas inner)
+            screen.sub(areas.get("components")),
+            [&](canvas)
             {
-                const auto areas = split_vertical(
-                    inner.bounds(), { constraint::fixed(1), constraint::fixed(4), constraint::fixed(5) }, 1);
-
                 widgets::progress::view_type{}
                     .gradient(palette::accent(), color::hex("#43bf6d"))
-                    .render(widgets::progress::state_type{ (m.tick % 100) / 99.0 }, inner.sub(areas[0]));
+                    .render(widgets::progress::state_type{ (m.tick % 100) / 99.0 },
+                            screen.sub(areas.get("progress")));
 
                 widgets::table{}
                     .headers({ "widget", "state" })
                     .rows({ { "list", "ready" }, { "viewport", "scrolling" }, { "tabs", "selectable" } })
                     .header_style(style{}.fg(palette::accent()).bold())
                     .row_style(style{}.fg(palette::text()))
-                    .render(inner.sub(areas[1]));
+                    .render(screen.sub(areas.get("table")));
 
                 widgets::block{}
                     .border(border::plain())
@@ -438,9 +446,10 @@ void view(const model& m, teacup::canvas screen)
                     .title_style(style{}.fg(m.input_focused ? palette::accent() : palette::subtle()))
                     .padding(0)
                     .render(
-                        inner.sub(areas[2]),
-                        [&](canvas input_area)
+                        screen.sub(areas.get("input-box")),
+                        [&](canvas)
                         {
+                            const canvas input_area = screen.sub(areas.get("input"));
                             widgets::text_input::view_type{}
                                 .text_style(style{}.fg(palette::text()))
                                 .cursor_style(
@@ -459,7 +468,7 @@ void view(const model& m, teacup::canvas screen)
     widgets::text{ "arrows select · enter activate · tab/shift+tab focus · ctrl+c quit" }
         .style(style{}.fg(palette::surface()).bg(palette::accent()))
         .align(align::center)
-        .render(screen.sub(rows[2]));
+        .render(screen.sub(areas.get("footer")));
 }
 
 }  // namespace

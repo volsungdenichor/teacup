@@ -8,8 +8,8 @@ using namespace teacup;
 
 TEST_CASE("text input edits UTF-8 text and moves its cursor")
 {
-    widgets::text_input_state state{ "ab", 2 };
-    widgets::text_input_view view;
+    widgets::text_input::state_type state{ "ab", 2 };
+    widgets::text_input::view_type view;
 
     CHECK(view.update(state, key_event{ key::left }));
     CHECK(state.cursor == 1);
@@ -29,8 +29,8 @@ TEST_CASE("text input renders a horizontally clipped cursor")
     s.clear();
     canvas c{ s };
 
-    widgets::text_input_state state{ "abcdef", 6 };
-    widgets::text_input_view view;
+    widgets::text_input::state_type state{ "abcdef", 6 };
+    widgets::text_input::view_type view;
     view.render(state, c);
 
     CHECK(s.row_text(0) == "cdef ");
@@ -42,8 +42,8 @@ TEST_CASE("text input renders its current value")
     s.clear();
     canvas c{ s };
 
-    widgets::text_input_state state{ "edited", 6 };
-    widgets::text_input_view view;
+    widgets::text_input::state_type state{ "edited", 6 };
+    widgets::text_input::view_type view;
     view.render(state, c);
 
     CHECK(s.row_text(0) == "edited      ");

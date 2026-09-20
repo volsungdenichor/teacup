@@ -92,9 +92,9 @@ void view(const model& m, teacup::canvas screen)
                 .align(align::center)
                 .render(inner.sub(lines[1]));
 
-            widgets::progress{ m.ticks / 99.0 }
+            widgets::progress::view_type{}
                 .gradient(color::hex("#7d56f4"), color::hex("#43bf6d"))
-                .render(inner.sub(lines[3]));
+                .render(widgets::progress::state_type{ m.ticks / 99.0 }, inner.sub(lines[3]));
         });
 
     widgets::text{ "last key: " + m.last_key }
