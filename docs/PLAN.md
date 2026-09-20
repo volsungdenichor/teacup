@@ -121,6 +121,14 @@ same tree drives `update` (event dispatch) and `view` (painting), so the two
 can never disagree about where a widget lives. Resolution is pure integer
 math; the tree owns no canvas or widget state.
 
+`focus` adds centralized focus management on top: a `focus_ring` owns the
+tab order and current focus (as layout ids), a `widget_traits` lookup marks
+widgets enabled/disabled and focusable (disabled implies not focusable; both
+are skipped by tab cycling and rejected for mouse focus), and a `router`
+binds ids to `route_keys` / `route_mouse` handlers — key events go to the
+focused widget only, mouse presses focus the hit area, and disabled widgets
+receive no input and are painted with `disabled_overlay()`.
+
 ## 5. Aesthetics toolkit
 
 - `border`: `plain`, `rounded`, `thick`, `double`, `ascii` glyph sets + per-side toggles.

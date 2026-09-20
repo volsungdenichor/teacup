@@ -167,6 +167,20 @@ public:
         return best;
     }
 
+    /// The nearest named ancestor of `id`, or nullptr at the root. Lets
+    /// callers walk from a hit leaf up to the widget that owns the area.
+    [[nodiscard]] const std::string* parent(const std::string& id) const
+    {
+        for (const auto& entry : parents_)
+        {
+            if (entry.first == id)
+            {
+                return entry.second.empty() ? nullptr : &entry.second;
+            }
+        }
+        return nullptr;
+    }
+
     [[nodiscard]] std::size_t size() const
     {
         return entries_.size();
@@ -188,24 +202,28 @@ public:
 private:
     friend areas resolve(const node& root, const rect& screen);
 
-    static void resolve_node(const node& n, const rect& area, areas& out);
+    static void resolve_node(const node& n, const rect& area, areas& out, const std::string& enclosing);
 
     std::vector<value_type> entries_;
+    std::vector<std::pair<std::string, std::string>> parents_;  // id → enclosing named id ("" at the root)
 };
 
 /// Resolves `root` against `screen`, in declaration (pre-order) order.
 inline areas resolve(const node& root, const rect& screen)
 {
     areas result;
-    areas::resolve_node(root, screen, result);
+    areas::resolve_node(root, screen, result, "");
     return result;
 }
 
-inline void areas::resolve_node(const node& n, const rect& area, areas& out)
+inline void areas::resolve_node(const node& n, const rect& area, areas& out, const std::string& enclosing)
 {
+    std::string innermost = enclosing;
     if (!n.id.empty())
     {
         out.entries_.emplace_back(n.id, area);
+        out.parents_.emplace_back(n.id, enclosing);
+        innermost = n.id;
     }
     switch (n.type)
     {
@@ -214,7 +232,7 @@ inline void areas::resolve_node(const node& n, const rect& area, areas& out)
         case node::kind::inset:
             if (!n.children.empty())
             {
-                resolve_node(n.children.front().content, area.inset(n.margin), out);
+                resolve_node(n.children.front().content, area.inset(n.margin), out, innermost);
             }
             break;
         case node::kind::row:
@@ -231,7 +249,7 @@ inline void areas::resolve_node(const node& n, const rect& area, areas& out)
                 : split_vertical(area, constraints, n.gap);
             for (std::size_t i = 0; i < n.children.size(); ++i)
             {
-                resolve_node(n.children[i].content, rects[i], out);
+                resolve_node(n.children[i].content, rects[i], out, innermost);
             }
             break;
         }

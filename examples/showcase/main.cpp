@@ -34,9 +34,7 @@ struct model
 {
     int tick = 0;
     teacup::size screen_size{ 80, 24 };
-    bool input_focused = false;
-    bool players_focused = false;
-    bool tabs_focused = false;
+    teacup::router events;  // owns the focus ring; survives model copies
     std::string last_key = "-";
     std::string last_mouse = "-";
     teacup::widgets::list<std::string>::state_type menu;
@@ -111,62 +109,35 @@ teacup::update_result<model> update(model m, const teacup::message& message)
     const teacup::widgets::text_input::view_type input_view;
     const teacup::widgets::viewport::view_type viewport_view;
     teacup::widgets::list<Player>::view_type players_view;
-    const auto focus_menu = [&]
-    {
-        m.input_focused = false;
-        m.players_focused = false;
-        m.tabs_focused = false;
-    };
-    const auto focus_input = [&]
-    {
-        m.input_focused = true;
-        m.players_focused = false;
-        m.tabs_focused = false;
-    };
-    const auto focus_players = [&]
-    {
-        m.input_focused = false;
-        m.players_focused = true;
-        m.tabs_focused = false;
-    };
-    const auto focus_tabs = [&]
-    {
-        m.input_focused = false;
-        m.players_focused = false;
-        m.tabs_focused = true;
-    };
     const teacup::layout::areas areas
         = teacup::layout::resolve(showcase_tree(), teacup::rect::from_size(m.screen_size));
     players_view.item_height(3).viewport_height(areas.get("players").height);
+
+    // The menu is the hub: its selection decides which widget is focused.
+    const auto focus_from_menu = [&]
+    {
+        m.events.focus().set(m.menu.selected == 1 ? "input" : m.menu.selected == 2 ? "players" : "menu");
+    };
+
+    m.events.add("tabs", teacup::route_keys(m.tabs, tabs_view));
+    m.events.add("tabs", teacup::route_mouse(m.tabs, tabs_view.labels({ "gallery", "layout", "events" }), "tabs"));
+    m.events.add("players", teacup::route_keys(m.players, players_view));
+    m.events.add("players", teacup::route_mouse(m.players, players_view, "players"));
+    m.events.add("input", teacup::route_mouse(m.input, input_view, "input"));
+    if (m.events.focus().order().empty())
+    {
+        m.events.focus_order({ "tabs", "menu", "players", "input" });
+    }
 
     if (const auto* mouse = teacup::msg_cast<teacup::mouse_event>(message))
     {
         m.last_mouse = std::to_string(mouse->position.x) + "," + std::to_string(mouse->position.y);
         if (menu_view.update(m.menu, *mouse, areas.get("menu")))
         {
-            if (m.menu.selected == 1)
-            {
-                focus_input();
-            }
-            else if (m.menu.selected == 2)
-            {
-                focus_players();
-            }
-            else
-            {
-                focus_menu();
-            }
+            focus_from_menu();
         }
-        if (tabs_view.labels({ "gallery", "layout", "events" }).update(m.tabs, *mouse, areas.get("tabs")))
-        {
-            focus_tabs();
-        }
+        m.events.route(message, areas);
         viewport_view.update(m.viewport, *mouse, areas.get("players"));
-        if (players_view.update(m.players, *mouse, areas.get("players")))
-        {
-            focus_players();
-            m.menu.selected = 2;
-        }
         if (mouse->action == teacup::mouse_action::press && mouse->button == teacup::mouse_button::left)
         {
             if (const std::string* target = areas.hit(mouse->position);
@@ -180,11 +151,6 @@ teacup::update_result<model> update(model m, const teacup::message& message)
                         = !m.players.items[static_cast<std::size_t>(item)].living;
                 }
             }
-        }
-        if (input_view.update(m.input, *mouse, areas.get("input")))
-        {
-            focus_input();
-            m.menu.selected = 1;
         }
         return teacup::next(m);
     }
@@ -204,7 +170,7 @@ teacup::update_result<model> update(model m, const teacup::message& message)
 
     if (const auto* paste = teacup::msg_cast<teacup::paste_event>(message))
     {
-        if (m.input_focused)
+        if (m.events.focus().is("input"))
         {
             input_view.update(m.input, *paste);
         }
@@ -220,125 +186,54 @@ teacup::update_result<model> update(model m, const teacup::message& message)
             return teacup::next(m, teacup::quit());
         }
 
-        if (key->code == teacup::key::tab && teacup::has(key->modifiers, teacup::modifier::shift))
+        const std::string was_focused = m.events.focus().focused();
+        const bool consumed = m.events.route(message, areas);
+
+        // Enter backs out of an editing widget to the menu hub.
+        if (key->code == teacup::key::enter && (was_focused == "input" || was_focused == "players" || was_focused == "tabs"))
         {
-            if (m.tabs_focused)
-                focus_players();
-            else if (m.input_focused)
-                focus_menu();
-            else if (m.players_focused)
-                focus_input();
-            else
-                focus_tabs();
-            return teacup::next(m);
-        }
-        if (key->code == teacup::key::tab)
-        {
-            if (m.tabs_focused)
-                focus_menu();
-            else if (m.input_focused)
-                focus_players();
-            else if (m.players_focused)
-                focus_tabs();
-            else
-                focus_input();
-            if (m.input_focused)
-                m.menu.selected = 1;
-            if (m.players_focused)
-                m.menu.selected = 2;
+            m.events.focus().set("menu");
             return teacup::next(m);
         }
 
-        if (m.input_focused)
-        {
-            if (key->code == teacup::key::enter)
-            {
-                focus_menu();
-                return teacup::next(m);
-            }
-            input_view.update(m.input, *key);
-            return teacup::next(m);
-        }
-
-        if (m.tabs_focused)
-        {
-            if (key->code == teacup::key::left || key->code == teacup::key::right)
-            {
-                tabs_view.update(m.tabs, *key);
-                return teacup::next(m);
-            }
-            if (key->code == teacup::key::enter)
-            {
-                focus_menu();
-                return teacup::next(m);
-            }
-        }
-
-        if (m.players_focused)
-        {
-            if (key->code == teacup::key::up || key->code == teacup::key::down || key->code == teacup::key::home
-                || key->code == teacup::key::end)
-            {
-                players_view.update(m.players, *key);
-                return teacup::next(m);
-            }
-            const int height = areas.get("players").height;
-            if (key->code == teacup::key::page_up)
-            {
-                players_view.page_up(m.players, height);
-                return teacup::next(m);
-            }
-            if (key->code == teacup::key::page_down)
-            {
-                players_view.page_down(m.players, height);
-                return teacup::next(m);
-            }
-            if (key->code == teacup::key::enter)
-            {
-                focus_menu();
-                return teacup::next(m);
-            }
-        }
-
-        if (key->code == teacup::key::enter)
-        {
-            if (m.menu.selected == 1)
-                focus_input();
-            else if (m.menu.selected == 2)
-                focus_players();
-            else
-                focus_menu();
-            return teacup::next(m);
-        }
-
-        if (m.menu.selected == 1
-            && (key->code == teacup::key::character || key->code == teacup::key::space || key->code == teacup::key::backspace
-                || key->code == teacup::key::del || key->code == teacup::key::home || key->code == teacup::key::end))
-        {
-            focus_input();
-            input_view.update(m.input, *key);
-            return teacup::next(m);
-        }
-
-        if (menu_view.update(m.menu, *key))
-        {
-            if (m.menu.selected == 1)
-                focus_input();
-            else if (m.menu.selected == 2)
-                focus_players();
-            else
-                focus_menu();
-            return teacup::next(m);
-        }
-
+        // Page keys scroll the demo viewport regardless of focus.
         if (key->code == teacup::key::page_up)
         {
-            viewport_view.page_up(m.viewport, 4);
+            if (was_focused == "players")
+                players_view.page_up(m.players, areas.get("players").height);
+            else
+                viewport_view.page_up(m.viewport, 4);
             return teacup::next(m);
         }
         if (key->code == teacup::key::page_down)
         {
-            viewport_view.page_down(m.viewport, 4);
+            if (was_focused == "players")
+                players_view.page_down(m.players, areas.get("players").height);
+            else
+                viewport_view.page_down(m.viewport, 4);
+            return teacup::next(m);
+        }
+
+        // The menu hub sees every key the focused widget did not consume;
+        // its selection drives focus (arrows move it, enter activates).
+        if (!consumed && menu_view.update(m.menu, *key))
+        {
+            focus_from_menu();
+            return teacup::next(m);
+        }
+        if (!consumed && key->code == teacup::key::enter)
+        {
+            focus_from_menu();
+            return teacup::next(m);
+        }
+
+        // Typing while the menu points at "text input" starts editing.
+        if (!consumed && m.menu.selected == 1
+            && (key->code == teacup::key::character || key->code == teacup::key::space || key->code == teacup::key::backspace
+                || key->code == teacup::key::del || key->code == teacup::key::home || key->code == teacup::key::end))
+        {
+            m.events.focus().set("input");
+            input_view.update(m.input, *key);
             return teacup::next(m);
         }
     }
@@ -403,7 +298,7 @@ void view(const model& m, teacup::canvas screen)
             {
                 widgets::list<std::string>::view_type{}
                     .selected_style(
-                        m.input_focused || m.players_focused || m.tabs_focused
+                        !m.events.focus().is("menu")
                             ? style{}.fg(palette::accent()).bold()
                             : style{}.fg(palette::surface()).bg(palette::accent()).bold())
                     .item_style(style{}.fg(palette::text()))
@@ -442,8 +337,8 @@ void view(const model& m, teacup::canvas screen)
                 widgets::block{}
                     .border(border::plain())
                     .border_style(style{}.fg(palette::subtle()))
-                    .title(m.input_focused ? " edit me [active] " : " edit me ")
-                    .title_style(style{}.fg(m.input_focused ? palette::accent() : palette::subtle()))
+                    .title(m.events.focus().is("input") ? " edit me [active] " : " edit me ")
+                    .title_style(style{}.fg(m.events.focus().is("input") ? palette::accent() : palette::subtle()))
                     .padding(0)
                     .render(
                         screen.sub(areas.get("input-box")),
@@ -453,7 +348,7 @@ void view(const model& m, teacup::canvas screen)
                             widgets::text_input::view_type{}
                                 .text_style(style{}.fg(palette::text()))
                                 .cursor_style(
-                                    m.input_focused ? style{}.fg(palette::surface()).bg(palette::accent())
+                                    m.events.focus().is("input") ? style{}.fg(palette::surface()).bg(palette::accent())
                                                     : style{}.fg(palette::subtle()).bg(palette::surface()))
                                 .render(m.input, input_area.sub(rect{ 0, 0, input_area.width(), 1 }));
                             widgets::text{ "> " + m.input.value }

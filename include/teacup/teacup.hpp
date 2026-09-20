@@ -8,6 +8,7 @@
 #include "teacup/color.hpp"
 #include "teacup/command.hpp"
 #include "teacup/event.hpp"
+#include "teacup/focus.hpp"
 #include "teacup/geometry.hpp"
 #include "teacup/layout.hpp"
 #include "teacup/layout_tree.hpp"
