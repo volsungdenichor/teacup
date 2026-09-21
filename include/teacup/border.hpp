@@ -5,7 +5,6 @@
 namespace teacup
 {
 
-/// The glyphs used to draw a box.
 struct border
 {
     std::string top = "─";
@@ -17,10 +16,7 @@ struct border
     std::string bottom_left = "└";
     std::string bottom_right = "┘";
 
-    static border plain()
-    {
-        return {};
-    }
+    static border plain() { return {}; }
 
     static border rounded()
     {
@@ -32,25 +28,13 @@ struct border
         return b;
     }
 
-    static border thick()
-    {
-        return { "━", "━", "┃", "┃", "┏", "┓", "┗", "┛" };
-    }
+    static border thick() { return { "━", "━", "┃", "┃", "┏", "┓", "┗", "┛" }; }
 
-    static border double_line()
-    {
-        return { "═", "═", "║", "║", "╔", "╗", "╚", "╝" };
-    }
+    static border double_line() { return { "═", "═", "║", "║", "╔", "╗", "╚", "╝" }; }
 
-    static border ascii()
-    {
-        return { "-", "-", "|", "|", "+", "+", "+", "+" };
-    }
+    static border ascii() { return { "-", "-", "|", "|", "+", "+", "+", "+" }; }
 
-    static border blank()
-    {
-        return { " ", " ", " ", " ", " ", " ", " ", " " };
-    }
+    static border blank() { return { " ", " ", " ", " ", " ", " ", " ", " " }; }
 };
 
 }  // namespace teacup

@@ -21,7 +21,7 @@ canvas canvas::sub(const rect& area) const
 
 void canvas::put(const point& p, const cell& c)
 {
-    if (target_ == nullptr || !rect{ point{ 0, 0 }, area_.size() }.contains(p))
+    if (target_ == nullptr || !bounds().contains(p))
     {
         return;
     }
@@ -30,7 +30,7 @@ void canvas::put(const point& p, const cell& c)
 
 void canvas::style_at(const point& p, const style& s)
 {
-    if (target_ == nullptr || !rect{ point{ 0, 0 }, area_.size() }.contains(p))
+    if (target_ == nullptr || !bounds().contains(p))
     {
         return;
     }
