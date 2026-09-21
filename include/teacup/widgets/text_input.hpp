@@ -102,7 +102,7 @@ struct text_input
             {
                 return false;
             }
-            const int column = event.position.x - area.x;
+            const int column = event.position.x - area.left();
             std::size_t position = 0;
             int width = 0;
             while (position < state.value.size() && width < column)
@@ -141,13 +141,13 @@ struct text_input
                 start = next_cursor(state, start);
             }
             target.fill(" ", text_style_);
-            target.text(0, 0, state.value.substr(start), text_style_);
+            target.text(point{ 0, 0 }, state.value.substr(start), text_style_);
             const int cursor_x = utf8::width(state.value.substr(start, cursor - start));
             if (cursor_x < target.width())
             {
                 const std::string glyph
                     = cursor < state.value.size() ? state.value.substr(cursor, next_cursor(state, cursor) - cursor) : " ";
-                target.text(cursor_x, 0, glyph, cursor_style_);
+                target.text(point{ cursor_x, 0 }, glyph, cursor_style_);
             }
         }
 

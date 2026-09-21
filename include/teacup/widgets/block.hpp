@@ -48,10 +48,7 @@ public:
         title_align_ = a;
         return *this;
     }
-    block& padding(int all)
-    {
-        return padding(all, all, all, all);
-    }
+    block& padding(int all) { return padding(all, all, all, all); }
     block& padding(int left, int top, int right, int bottom)
     {
         pad_left_ = left;
@@ -124,18 +121,18 @@ private:
 
         if (h == 1)
         {
-            target.horizontal_line(0, 0, w, border_.top, s);
+            target.horizontal_line(point{ 0, 0 }, w, border_.top, s);
         }
         else
         {
-            target.horizontal_line(1, 0, w - 2, border_.top, s);
-            target.horizontal_line(1, h - 1, w - 2, border_.bottom, s);
-            target.vertical_line(0, 1, h - 2, border_.left, s);
-            target.vertical_line(w - 1, 1, h - 2, border_.right, s);
-            target.put(0, 0, cell{ border_.top_left, s, 1 });
-            target.put(w - 1, 0, cell{ border_.top_right, s, 1 });
-            target.put(0, h - 1, cell{ border_.bottom_left, s, 1 });
-            target.put(w - 1, h - 1, cell{ border_.bottom_right, s, 1 });
+            target.horizontal_line(point{ 1, 0 }, w - 2, border_.top, s);
+            target.horizontal_line(point{ 1, h - 1 }, w - 2, border_.bottom, s);
+            target.vertical_line(point{ 0, 1 }, h - 2, border_.left, s);
+            target.vertical_line(point{ w - 1, 1 }, h - 2, border_.right, s);
+            target.put(point{ 0, 0 }, cell{ border_.top_left, s, 1 });
+            target.put(point{ w - 1, 0 }, cell{ border_.top_right, s, 1 });
+            target.put(point{ 0, h - 1 }, cell{ border_.bottom_left, s, 1 });
+            target.put(point{ w - 1, h - 1 }, cell{ border_.bottom_right, s, 1 });
         }
 
         if (!title_.empty() && w > 2)
@@ -143,7 +140,7 @@ private:
             const int available = w - 2;
             const int extent = (std::min)(utf8::width(title_), available);
             const int offset = 1 + align_offset(title_align_, available, extent);
-            target.text(offset, 0, title_, title_style_);
+            target.text(point{ offset, 0 }, title_, title_style_);
         }
     }
 

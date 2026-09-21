@@ -88,7 +88,7 @@ struct viewport
                 const int index = first + row;
                 if (index >= 0 && index < static_cast<int>(state.lines.size()))
                 {
-                    target.text(0, row, state.lines[static_cast<std::size_t>(index)], style_);
+                    target.text(point{ 0, row }, state.lines[static_cast<std::size_t>(index)], style_);
                 }
             }
         }

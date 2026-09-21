@@ -78,7 +78,7 @@ struct tabs
             {
                 return false;
             }
-            int x = area.x;
+            int x = area.left();
             for (std::size_t i = 0; i < labels_.size(); ++i)
             {
                 const std::string label
@@ -113,7 +113,7 @@ struct tabs
                 const bool active = static_cast<int>(i) == selected;
                 const std::string text = active ? "[" + labels_[i] + "]" : " " + labels_[i] + " ";
                 const std::string clipped = text.substr(0, static_cast<std::size_t>(target.width() - x));
-                target.text(x, 0, clipped, active ? selected_style_ : tab_style_);
+                target.text(point{ x, 0 }, clipped, active ? selected_style_ : tab_style_);
                 x += static_cast<int>(clipped.size());
             }
         }

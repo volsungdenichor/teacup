@@ -18,7 +18,7 @@ struct menu_item
 {
     std::string label;
 };
-}
+}  // namespace
 
 TEST_CASE("list view updates application-owned list state")
 {
@@ -37,9 +37,10 @@ TEST_CASE("generic list view renders widget-like items")
 
     widgets::list<menu_item>::state_type state{ { { "first" }, { "second" } }, 1 };
     widgets::list<menu_item>::view_type view;
-    view.item_renderer([](const menu_item& item, canvas row, const style& item_style, bool selected) {
-        row.text(0, 0, (selected ? "[" : " ") + item.label + (selected ? "]" : " "), item_style);
-    });
+    view.item_renderer(
+        [](const menu_item& item, canvas row, const style& item_style, bool selected) {
+            row.text(point{ 0, 0 }, (selected ? "[" : " ") + item.label + (selected ? "]" : " "), item_style);
+        });
     view.render(state, c);
 
     CHECK(s.row_text(0) == " first      ");
@@ -54,9 +55,10 @@ TEST_CASE("list view allows replacing the default string renderer")
 
     widgets::list<std::string>::state_type state{ { "one", "two" }, 1 };
     widgets::list<std::string>::view_type view;
-    view.item_renderer([](const std::string& item, canvas row, const style& item_style, bool selected) {
-        row.text(0, 0, (selected ? "[" : " ") + item + (selected ? "]" : " "), item_style);
-    });
+    view.item_renderer(
+        [](const std::string& item, canvas row, const style& item_style, bool selected) {
+            row.text(point{ 0, 0 }, (selected ? "[" : " ") + item + (selected ? "]" : " "), item_style);
+        });
     view.render(state, c);
 
     CHECK(s.row_text(0) == " one      ");
@@ -101,23 +103,27 @@ TEST_CASE("widget views respond to mouse events")
 {
     widgets::list<std::string>::state_type list_state{ { "one", "two", "three" }, 0 };
     widgets::list<std::string>::view_type list_view;
-    CHECK(list_view.update(list_state, mouse_event{ point{ 2, 1 }, mouse_button::left, mouse_action::press }, rect{ 0, 0, 8, 3 }));
+    CHECK(list_view.update(
+        list_state, mouse_event{ point{ 2, 1 }, mouse_button::left, mouse_action::press }, rect{ 0, 0, 8, 3 }));
     CHECK(list_state.selected == 1);
 
     widgets::tabs::state_type tabs_state{};
     widgets::tabs::view_type tabs_view;
     tabs_view.labels({ "one", "two" });
-    CHECK(tabs_view.update(tabs_state, mouse_event{ point{ 6, 0 }, mouse_button::left, mouse_action::press }, rect{ 0, 0, 12, 1 }));
+    CHECK(tabs_view.update(
+        tabs_state, mouse_event{ point{ 6, 0 }, mouse_button::left, mouse_action::press }, rect{ 0, 0, 12, 1 }));
     CHECK(tabs_state.selected == 1);
 
     widgets::viewport::state_type viewport_state{ { "one", "two", "three" }, 1 };
     widgets::viewport::view_type viewport_view;
-    CHECK(viewport_view.update(viewport_state, mouse_event{ point{ 0, 0 }, mouse_button::wheel_up, mouse_action::press }, rect{ 0, 0, 8, 2 }));
+    CHECK(viewport_view.update(
+        viewport_state, mouse_event{ point{ 0, 0 }, mouse_button::wheel_up, mouse_action::press }, rect{ 0, 0, 8, 2 }));
     CHECK(viewport_state.offset == 0);
 
     widgets::text_input::state_type input_state{ "abc", 0 };
     widgets::text_input::view_type input_view;
-    CHECK(input_view.update(input_state, mouse_event{ point{ 2, 0 }, mouse_button::left, mouse_action::press }, rect{ 0, 0, 8, 1 }));
+    CHECK(input_view.update(
+        input_state, mouse_event{ point{ 2, 0 }, mouse_button::left, mouse_action::press }, rect{ 0, 0, 8, 1 }));
     CHECK(input_state.cursor == 2);
 }
 
@@ -127,9 +133,7 @@ TEST_CASE("widgets allow custom rendering into the allocated canvas")
     s.clear();
     canvas c{ s };
 
-    widgets::text{ "ignored" }
-        .renderer([](canvas target) { target.text(0, 0, "custom"); })
-        .render(c);
+    widgets::text{ "ignored" }.renderer([](canvas target) { target.text(point{ 0, 0 }, "custom"); }).render(c);
 
     CHECK(s.row_text(0) == "custom      ");
 }
@@ -151,10 +155,12 @@ TEST_CASE("generic list allocates multi-line item regions")
     s.clear();
     widgets::list<menu_item>::state_type state{ { { "first" }, { "second" } }, 0 };
     widgets::list<menu_item>::view_type view;
-    view.item_height(2).item_renderer([](const menu_item& item, canvas row, const style& style, bool) {
-        row.text(0, 0, item.label, style);
-        row.text(0, 1, "detail", style);
-    });
+    view.item_height(2).item_renderer(
+        [](const menu_item& item, canvas row, const style& style, bool)
+        {
+            row.text(point{ 0, 0 }, item.label, style);
+            row.text(point{ 0, 1 }, "detail", style);
+        });
     view.render(state, canvas{ s });
 
     CHECK(s.row_text(0) == "first       ");
@@ -169,10 +175,12 @@ TEST_CASE("generic list scrolls multi-line item regions")
     s.clear();
     widgets::list<menu_item>::state_type state{ { { "first" }, { "second" }, { "third" } }, 0 };
     widgets::list<menu_item>::view_type view;
-    view.item_height(2).item_renderer([](const menu_item& item, canvas row, const style& style, bool) {
-        row.text(0, 0, item.label, style);
-        row.text(0, 1, "detail", style);
-    });
+    view.item_height(2).item_renderer(
+        [](const menu_item& item, canvas row, const style& style, bool)
+        {
+            row.text(point{ 0, 0 }, item.label, style);
+            row.text(point{ 0, 1 }, "detail", style);
+        });
 
     view.page_down(state, 4);
     CHECK(state.offset == 1);
@@ -196,13 +204,14 @@ TEST_CASE("generic list keeps the selected item visible")
 
 TEST_CASE("generic list scrolls enough to reveal the last item")
 {
-    widgets::list<menu_item>::state_type state{
-        { { "first" }, { "second" }, { "third" } }, 0 };
+    widgets::list<menu_item>::state_type state{ { { "first" }, { "second" }, { "third" } }, 0 };
     widgets::list<menu_item>::view_type view;
-    view.item_height(2).item_renderer([](const menu_item& item, canvas row, const style& style, bool) {
-        row.text(0, 0, item.label, style);
-        row.text(0, 1, "detail", style);
-    });
+    view.item_height(2).item_renderer(
+        [](const menu_item& item, canvas row, const style& style, bool)
+        {
+            row.text(point{ 0, 0 }, item.label, style);
+            row.text(point{ 0, 1 }, "detail", style);
+        });
 
     view.update(state, key_event{ key::end });
     view.ensure_visible(state, 5);

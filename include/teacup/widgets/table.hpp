@@ -77,7 +77,7 @@ public:
             {
                 line.push_back(' ');
             }
-            target.text(0, row_index, line, header_style_);
+            target.text(point{ 0, row_index }, line, header_style_);
             ++row_index;
         }
 
@@ -92,13 +92,13 @@ public:
             {
                 line.push_back(' ');
             }
-            target.text(0, row_index, line, row_style_);
+            target.text(point{ 0, row_index }, line, row_style_);
             ++row_index;
         }
 
         while (row_index < height)
         {
-            target.fill(rect{ 0, row_index, width, 1 }, " ");
+            target.fill(rect{ point{ 0, row_index }, size{ width, 1 } }, " ");
             ++row_index;
         }
     }
@@ -118,7 +118,8 @@ private:
         }
 
         std::vector<int> widths(column_count, 0);
-        auto update = [&](const std::vector<std::string>& values) {
+        auto update = [&](const std::vector<std::string>& values)
+        {
             for (std::size_t i = 0; i < values.size(); ++i)
             {
                 widths[i] = (std::max)(widths[i], static_cast<int>(utf8::width(values[i])));

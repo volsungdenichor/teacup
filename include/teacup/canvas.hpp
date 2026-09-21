@@ -19,65 +19,36 @@ public:
     canvas() = default;
     canvas(surface& target, rect area);
 
-    explicit canvas(surface& target)
-        : canvas{ target, target.bounds() }
-    {
-    }
+    explicit canvas(surface& target) : canvas{ target, target.bounds() } { }
 
-    [[nodiscard]] teacup::size size() const
-    {
-        return area_.size();
-    }
-    [[nodiscard]] int width() const
-    {
-        return area_.width;
-    }
-    [[nodiscard]] int height() const
-    {
-        return area_.height;
-    }
+    [[nodiscard]] teacup::size size() const { return area_.size(); }
+    [[nodiscard]] int width() const { return area_.width(); }
+    [[nodiscard]] int height() const { return area_.height(); }
     /// Local bounds of this canvas, i.e. `{0, 0, width, height}`.
-    [[nodiscard]] rect bounds() const
-    {
-        return rect::from_size(area_.size());
-    }
-    [[nodiscard]] bool valid() const
-    {
-        return target_ != nullptr && !area_.empty();
-    }
+    [[nodiscard]] rect bounds() const { return rect::from_size(area_.size()); }
+    [[nodiscard]] bool valid() const { return target_ != nullptr && !area_.empty(); }
 
     /// Narrows the canvas to `area` expressed in local coordinates.
     [[nodiscard]] canvas sub(const rect& area) const;
 
-    void put(int x, int y, const cell& c);
-    void put(const point& p, const cell& c)
-    {
-        put(p.x, p.y, c);
-    }
+    void put(const point& p, const cell& c);
 
     /// Applies `s` on top of the existing style of a cell.
-    void style_at(int x, int y, const style& s);
+    void style_at(const point& p, const style& s);
 
     /// Draws `text` starting at (x, y), clipped to the canvas. Returns the
     /// number of columns advanced.
-    int text(int x, int y, const std::string& text, const style& s = {});
-    int text(const point& p, const std::string& value, const style& s = {})
-    {
-        return text(p.x, p.y, value, s);
-    }
+    int text(const point& p, const std::string& value, const style& s = {});
 
     /// Draws `text` horizontally aligned within the full canvas width.
     int text_aligned(int y, const std::string& value, align a, const style& s = {});
 
     /// Repeats `glyph` over `area` (local coordinates).
     void fill(const rect& area, const std::string& glyph = " ", const style& s = {});
-    void fill(const std::string& glyph = " ", const style& s = {})
-    {
-        fill(bounds(), glyph, s);
-    }
+    void fill(const std::string& glyph = " ", const style& s = {}) { fill(bounds(), glyph, s); }
 
-    void horizontal_line(int x, int y, int length, const std::string& glyph, const style& s = {});
-    void vertical_line(int x, int y, int length, const std::string& glyph, const style& s = {});
+    void horizontal_line(const point& p, int length, const std::string& glyph, const style& s = {});
+    void vertical_line(const point& p, int length, const std::string& glyph, const style& s = {});
 
 private:
     surface* target_ = nullptr;

@@ -31,25 +31,23 @@ void surface::clear(const teacup::style& s)
     }
 }
 
-const cell& surface::at(int x, int y) const
+const cell& surface::at(const point& p) const
 {
-    if (!contains(x, y))
+    if (!contains(p))
     {
         return dummy_cell();
     }
-    return cells_[static_cast<std::size_t>(y) * static_cast<std::size_t>(size_.width)
-                  + static_cast<std::size_t>(x)];
+    return cells_[static_cast<std::size_t>(p.y) * static_cast<std::size_t>(size_.width) + static_cast<std::size_t>(p.x)];
 }
 
-cell& surface::at(int x, int y)
+cell& surface::at(const point& p)
 {
-    if (!contains(x, y))
+    if (!contains(p))
     {
         dummy_cell() = cell{};
         return dummy_cell();
     }
-    return cells_[static_cast<std::size_t>(y) * static_cast<std::size_t>(size_.width)
-                  + static_cast<std::size_t>(x)];
+    return cells_[static_cast<std::size_t>(p.y) * static_cast<std::size_t>(size_.width) + static_cast<std::size_t>(p.x)];
 }
 
 std::string surface::row_text(int y) const
@@ -57,7 +55,7 @@ std::string surface::row_text(int y) const
     std::string out;
     for (int x = 0; x < size_.width; ++x)
     {
-        const cell& c = at(x, y);
+        const cell& c = at(point{ x, y });
         if (c.width == 0)
         {
             continue;

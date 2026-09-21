@@ -61,7 +61,7 @@ struct spinner
             {
                 return;
             }
-            target.text(0, 0, frames_[state.frame % frames_.size()], style_);
+            target.text(point{ 0, 0 }, frames_[state.frame % frames_.size()], style_);
         }
 
     private:

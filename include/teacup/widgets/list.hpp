@@ -59,7 +59,7 @@ struct list
                     {
                         text.push_back(' ');
                     }
-                    row.text(0, 0, text, item_style);
+                    row.text(point{ 0, 0 }, text, item_style);
                 };
             }
         }
@@ -175,14 +175,14 @@ struct list
             if (event.button == mouse_button::wheel_down)
             {
                 state.offset = (std::min)(
-                    state.offset + 1, (std::max)(0, static_cast<int>(state.items.size()) - area.height / item_height_));
+                    state.offset + 1, (std::max)(0, static_cast<int>(state.items.size()) - area.height() / item_height_));
                 return true;
             }
             if (event.action != mouse_action::press || event.button != mouse_button::left)
             {
                 return false;
             }
-            const int row = state.offset + (event.position.y - area.y) / item_height_;
+            const int row = state.offset + (event.position.y - area.top()) / item_height_;
             if (row < 0 || row >= static_cast<int>(state.items.size()))
             {
                 return false;

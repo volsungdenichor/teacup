@@ -5,11 +5,7 @@
 namespace teacup
 {
 
-canvas::canvas(surface& target, rect area)
-    : target_{ &target }
-    , area_{ area.intersect(target.bounds()) }
-{
-}
+canvas::canvas(surface& target, rect area) : target_{ &target }, area_{ area.intersect(target.bounds()) } { }
 
 canvas canvas::sub(const rect& area) const
 {
@@ -19,36 +15,36 @@ canvas canvas::sub(const rect& area) const
         return result;
     }
     result.target_ = target_;
-    result.area_ = area.moved(area_.x, area_.y).intersect(area_);
+    result.area_ = area.moved(area_.origin()).intersect(area_);
     return result;
 }
 
-void canvas::put(int x, int y, const cell& c)
+void canvas::put(const point& p, const cell& c)
 {
-    if (target_ == nullptr || x < 0 || y < 0 || x >= area_.width || y >= area_.height)
+    if (target_ == nullptr || !rect{ point{ 0, 0 }, area_.size() }.contains(p))
     {
         return;
     }
-    target_->at(area_.x + x, area_.y + y) = c;
+    target_->at(area_.origin() + p) = c;
 }
 
-void canvas::style_at(int x, int y, const style& s)
+void canvas::style_at(const point& p, const style& s)
 {
-    if (target_ == nullptr || x < 0 || y < 0 || x >= area_.width || y >= area_.height)
+    if (target_ == nullptr || !rect{ point{ 0, 0 }, area_.size() }.contains(p))
     {
         return;
     }
-    cell& target = target_->at(area_.x + x, area_.y + y);
+    cell& target = target_->at(area_.origin() + p);
     target.style = target.style.merged(s);
 }
 
-int canvas::text(int x, int y, const std::string& value, const style& s)
+int canvas::text(const point& p, const std::string& value, const style& s)
 {
-    if (target_ == nullptr || y < 0 || y >= area_.height)
+    if (target_ == nullptr || p.y < 0 || p.y >= area_.height())
     {
         return 0;
     }
-    int cursor = x;
+    int cursor = p.x;
     std::size_t pos = 0;
     while (pos < value.size())
     {
@@ -62,7 +58,7 @@ int canvas::text(int x, int y, const std::string& value, const style& s)
         {
             continue;
         }
-        if (cursor >= area_.width)
+        if (cursor >= area_.width())
         {
             break;
         }
@@ -70,21 +66,21 @@ int canvas::text(int x, int y, const std::string& value, const style& s)
         utf8::encode(cp, glyph);
         if (cursor >= 0)
         {
-            put(cursor, y, cell{ glyph, s, static_cast<std::uint8_t>(w) });
-            if (w == 2 && cursor + 1 < area_.width)
+            put(point{ cursor, p.y }, cell{ glyph, s, static_cast<std::uint8_t>(w) });
+            if (w == 2 && cursor + 1 < area_.width())
             {
-                put(cursor + 1, y, cell{ "", s, 0 });
+                put(point{ cursor + 1, p.y }, cell{ "", s, 0 });
             }
         }
         cursor += w;
     }
-    return cursor - x;
+    return cursor - p.x;
 }
 
 int canvas::text_aligned(int y, const std::string& value, align a, const style& s)
 {
     const int extent = utf8::width(value);
-    return text(align_offset(a, area_.width, extent), y, value, s);
+    return text(point{ align_offset(a, area_.width(), extent), y }, value, s);
 }
 
 void canvas::fill(const rect& area, const std::string& glyph, const style& s)
@@ -96,23 +92,23 @@ void canvas::fill(const rect& area, const std::string& glyph, const style& s)
     {
         for (int x = local.left(); x < local.right(); x += step)
         {
-            put(x, y, cell{ glyph, s, static_cast<std::uint8_t>(step) });
+            put(point{ x, y }, cell{ glyph, s, static_cast<std::uint8_t>(step) });
             for (int k = 1; k < step && x + k < local.right(); ++k)
             {
-                put(x + k, y, cell{ "", s, 0 });
+                put(point{ x + k, y }, cell{ "", s, 0 });
             }
         }
     }
 }
 
-void canvas::horizontal_line(int x, int y, int length, const std::string& glyph, const style& s)
+void canvas::horizontal_line(const point& p, int length, const std::string& glyph, const style& s)
 {
-    fill(rect{ x, y, length, 1 }, glyph, s);
+    fill(rect{ p, teacup::size{ length, 1 } }, glyph, s);
 }
 
-void canvas::vertical_line(int x, int y, int length, const std::string& glyph, const style& s)
+void canvas::vertical_line(const point& p, int length, const std::string& glyph, const style& s)
 {
-    fill(rect{ x, y, 1, length }, glyph, s);
+    fill(rect{ p, teacup::size{ 1, length } }, glyph, s);
 }
 
 }  // namespace teacup

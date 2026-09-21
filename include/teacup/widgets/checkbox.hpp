@@ -61,8 +61,7 @@ struct checkbox
             if (target.valid())
             {
                 target.text(
-                    0,
-                    0,
+                    point{ 0, 0 },
                     state.checked ? checked_glyph_ : unchecked_glyph_,
                     state.checked ? checked_style_ : unchecked_style_);
             }

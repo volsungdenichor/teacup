@@ -85,7 +85,7 @@ TEST_CASE("showcase update(): mouse click focuses and selects a player")
     const rect players = areas.get("players");
 
     // Click the second player's first row (item_height 3 → y = players.y + 3).
-    const point click{ players.x + 1, players.y + 3 };
+    const auto click = point{ players.left() + 1, players.top() + 3 };
     m = update(std::move(m),
                message{ mouse_event{ click, mouse_button::left, mouse_action::press } })
             .model;

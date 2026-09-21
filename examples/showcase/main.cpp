@@ -52,25 +52,49 @@ teacup::layout::node showcase_tree()
 {
     using namespace teacup::layout;
     return column({
-        fixed(7, named("header", inset(2, column({
-            fixed(1, row({
-                flex(leaf("title")),
-                fixed(14, leaf("spinner")),
-            })),
-            flex(space()),
-            fixed(1, focusable("tabs")),
-        })))),
-        flex(row({
-            percent(42, named("navigation", inset(2, column({
-                fixed(6, focusable("menu")),
-                flex(focusable("players")),
-            }, 1)))),
-            flex(named("components", inset(2, column({
-                fixed(1, leaf("progress")),
-                fixed(4, leaf("table")),
-                fixed(5, named("input-box", inset(1, focusable("input")))),
-            }, 1)))),
-        }, 1)),
+        fixed(
+            7,
+            named(
+                "header",
+                inset(
+                    2,
+                    column({
+                        fixed(
+                            1,
+                            row({
+                                flex(leaf("title")),
+                                fixed(14, leaf("spinner")),
+                            })),
+                        flex(space()),
+                        fixed(1, focusable("tabs")),
+                    })))),
+        flex(row(
+            {
+                percent(
+                    42,
+                    named(
+                        "navigation",
+                        inset(
+                            2,
+                            column(
+                                {
+                                    fixed(6, focusable("menu")),
+                                    flex(focusable("players")),
+                                },
+                                1)))),
+                flex(named(
+                    "components",
+                    inset(
+                        2,
+                        column(
+                            {
+                                fixed(1, leaf("progress")),
+                                fixed(4, leaf("table")),
+                                fixed(5, named("input-box", inset(1, focusable("input")))),
+                            },
+                            1)))),
+            },
+            1)),
         fixed(1, leaf("footer")),
     });
 }
@@ -109,9 +133,8 @@ teacup::update_result<model> update(model m, const teacup::message& message)
     const teacup::widgets::text_input::view_type input_view;
     const teacup::widgets::viewport::view_type viewport_view;
     teacup::widgets::list<Player>::view_type players_view;
-    const teacup::layout::areas areas
-        = teacup::layout::resolve(showcase_tree(), teacup::rect::from_size(m.screen_size));
-    players_view.item_height(3).viewport_height(areas.get("players").height);
+    const teacup::layout::areas areas = teacup::layout::resolve(showcase_tree(), teacup::rect::from_size(m.screen_size));
+    players_view.item_height(3).viewport_height(areas.get("players").height());
 
     // Focus is authoritative; the menu selection mirrors it so the hub
     // highlights the active widget. Enter on the hub activates (focuses) the
@@ -121,8 +144,7 @@ teacup::update_result<model> update(model m, const teacup::message& message)
         const std::string& f = m.events.focus().focused();
         m.menu.selected = f == "input" ? 1 : f == "players" ? 2 : 0;
     };
-    const auto activate_menu = [&]
-    {
+    const auto activate_menu = [&] {
         m.events.focus().set(m.menu.selected == 1 ? "input" : m.menu.selected == 2 ? "players" : "menu");
     };
 
@@ -152,10 +174,9 @@ teacup::update_result<model> update(model m, const teacup::message& message)
         viewport_view.update(m.viewport, *mouse, areas.get("players"));
         if (mouse->action == teacup::mouse_action::press && mouse->button == teacup::mouse_button::left)
         {
-            if (const std::string* target = areas.hit(mouse->position);
-                target != nullptr && *target == "players")
+            if (const std::string* target = areas.hit(mouse->position); target != nullptr && *target == "players")
             {
-                const int row = m.players.offset * 3 + mouse->position.y - areas.get("players").y;
+                const int row = m.players.offset * 3 + mouse->position.y - areas.get("players").left();
                 const int item = row / 3;
                 if (row % 3 == 2 && item >= 0 && item < static_cast<int>(m.players.items.size()))
                 {
@@ -222,7 +243,7 @@ teacup::update_result<model> update(model m, const teacup::message& message)
         if (key->code == teacup::key::page_up)
         {
             if (was_focused == "players")
-                players_view.page_up(m.players, areas.get("players").height);
+                players_view.page_up(m.players, areas.get("players").height());
             else
                 viewport_view.page_up(m.viewport, 4);
             return teacup::next(m);
@@ -230,7 +251,7 @@ teacup::update_result<model> update(model m, const teacup::message& message)
         if (key->code == teacup::key::page_down)
         {
             if (was_focused == "players")
-                players_view.page_down(m.players, areas.get("players").height);
+                players_view.page_down(m.players, areas.get("players").height());
             else
                 viewport_view.page_down(m.viewport, 4);
             return teacup::next(m);
@@ -303,9 +324,8 @@ void view(const model& m, teacup::canvas screen)
             {
                 widgets::list<std::string>::view_type{}
                     .selected_style(
-                        !m.events.focus().is("menu")
-                            ? style{}.fg(palette::accent()).bold()
-                            : style{}.fg(palette::surface()).bg(palette::accent()).bold())
+                        !m.events.focus().is("menu") ? style{}.fg(palette::accent()).bold()
+                                                     : style{}.fg(palette::surface()).bg(palette::accent()).bold())
                     .item_style(style{}.fg(palette::text()))
                     .render(m.menu, screen.sub(areas.get("menu")));
 
@@ -329,8 +349,7 @@ void view(const model& m, teacup::canvas screen)
             {
                 widgets::progress::view_type{}
                     .gradient(palette::accent(), color::hex("#43bf6d"))
-                    .render(widgets::progress::state_type{ (m.tick % 100) / 99.0 },
-                            screen.sub(areas.get("progress")));
+                    .render(widgets::progress::state_type{ (m.tick % 100) / 99.0 }, screen.sub(areas.get("progress")));
 
                 widgets::table{}
                     .headers({ "widget", "state" })
@@ -354,7 +373,7 @@ void view(const model& m, teacup::canvas screen)
                                 .text_style(style{}.fg(palette::text()))
                                 .cursor_style(
                                     m.events.focus().is("input") ? style{}.fg(palette::surface()).bg(palette::accent())
-                                                    : style{}.fg(palette::subtle()).bg(palette::surface()))
+                                                                 : style{}.fg(palette::subtle()).bg(palette::surface()))
                                 .render(m.input, input_area.sub(rect{ 0, 0, input_area.width(), 1 }));
                             widgets::text{ "> " + m.input.value }
                                 .style(style{}.fg(palette::subtle()))

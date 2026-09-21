@@ -72,11 +72,11 @@ struct progress
                 {
                     const double t = width > 1 ? static_cast<double>(x) / (width - 1) : 0.0;
                     const style s = style{}.fg(color::mix(from_, to_, t));
-                    target.put(x, y, cell{ filled_, s, 1 });
+                    target.put(point{ x, y }, cell{ filled_, s, 1 });
                 }
                 else
                 {
-                    target.put(x, y, cell{ empty_, track_style_, 1 });
+                    target.put(point{ x, y }, cell{ empty_, track_style_, 1 });
                 }
             }
         }

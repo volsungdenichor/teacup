@@ -10,14 +10,11 @@ struct point
     int x = 0;
     int y = 0;
 
-    friend constexpr bool operator==(const point& l, const point& r)
-    {
-        return l.x == r.x && l.y == r.y;
-    }
-    friend constexpr bool operator!=(const point& l, const point& r)
-    {
-        return !(l == r);
-    }
+    friend constexpr bool operator==(const point& lhs, const point& rhs) { return lhs.x == rhs.x && lhs.y == rhs.y; }
+    friend constexpr bool operator!=(const point& lhs, const point& rhs) { return !(lhs == rhs); }
+
+    friend constexpr point operator+(const point& lhs, const point& rhs) { return point{ lhs.x + rhs.x, lhs.y + rhs.y }; }
+    friend constexpr point operator-(const point& lhs, const point& rhs) { return point{ lhs.x - rhs.x, lhs.y - rhs.y }; }
 };
 
 struct size
@@ -25,61 +22,37 @@ struct size
     int width = 0;
     int height = 0;
 
-    [[nodiscard]] constexpr int area() const
-    {
-        return width * height;
-    }
-    [[nodiscard]] constexpr bool empty() const
-    {
-        return width <= 0 || height <= 0;
-    }
+    [[nodiscard]] constexpr int area() const { return width * height; }
+    [[nodiscard]] constexpr bool empty() const { return width <= 0 || height <= 0; }
 
-    friend constexpr bool operator==(const size& l, const size& r)
+    friend constexpr bool operator==(const size& lhs, const size& rhs)
     {
-        return l.width == r.width && l.height == r.height;
+        return lhs.width == rhs.width && lhs.height == rhs.height;
     }
-    friend constexpr bool operator!=(const size& l, const size& r)
-    {
-        return !(l == r);
-    }
+    friend constexpr bool operator!=(const size& lhs, const size& rhs) { return !(lhs == rhs); }
 };
 
 struct rect
 {
-    int x = 0;
-    int y = 0;
-    int width = 0;
-    int height = 0;
+    teacup::point _origin{ 0, 0 };
+    teacup::size _size{ 0, 0 };
 
-    static constexpr rect from_size(const teacup::size& s)
-    {
-        return rect{ 0, 0, s.width, s.height };
-    }
+    constexpr rect() = default;
+    constexpr rect(teacup::point origin, teacup::size size) : _origin(origin), _size(size) { }
+    constexpr rect(int x, int y, int width, int height) : _origin{ x, y }, _size{ width, height } { }
 
-    [[nodiscard]] constexpr int left() const
-    {
-        return x;
-    }
-    [[nodiscard]] constexpr int top() const
-    {
-        return y;
-    }
-    [[nodiscard]] constexpr int right() const
-    {
-        return x + width;
-    }
-    [[nodiscard]] constexpr int bottom() const
-    {
-        return y + height;
-    }
-    [[nodiscard]] constexpr teacup::size size() const
-    {
-        return { width, height };
-    }
-    [[nodiscard]] constexpr bool empty() const
-    {
-        return width <= 0 || height <= 0;
-    }
+    static constexpr rect from_size(const teacup::size& s) { return rect{ point{ 0, 0 }, s }; }
+
+    [[nodiscard]] constexpr teacup::size size() const { return _size; }
+    [[nodiscard]] constexpr teacup::point origin() const { return _origin; }
+
+    [[nodiscard]] constexpr int left() const { return _origin.x; }
+    [[nodiscard]] constexpr int top() const { return _origin.y; }
+    [[nodiscard]] constexpr int right() const { return _origin.x + _size.width; }
+    [[nodiscard]] constexpr int bottom() const { return _origin.y + _size.height; }
+    [[nodiscard]] constexpr int width() const { return _size.width; }
+    [[nodiscard]] constexpr int height() const { return _size.height; }
+    [[nodiscard]] constexpr bool empty() const { return _size.empty(); }
 
     [[nodiscard]] constexpr bool contains(const point& p) const
     {
@@ -94,37 +67,29 @@ struct rect
         const int nb = (std::min)(bottom(), other.bottom());
         if (nr <= nx || nb <= ny)
         {
-            return rect{ nx, ny, 0, 0 };
+            return rect{ teacup::point{ nx, ny }, teacup::size{ 0, 0 } };
         }
-        return rect{ nx, ny, nr - nx, nb - ny };
+        return rect{ teacup::point{ nx, ny }, teacup::size{ nr - nx, nb - ny } };
     }
 
     /// Shrinks the rectangle by the given insets, never going below zero extent.
     [[nodiscard]] rect inset(int l, int t, int r, int b) const
     {
-        const int nw = (std::max)(0, width - l - r);
-        const int nh = (std::max)(0, height - t - b);
-        return rect{ x + l, y + t, nw, nh };
+        const int nw = (std::max)(0, width() - l - r);
+        const int nh = (std::max)(0, height() - t - b);
+        return rect{ _origin.x + l, _origin.y + t, nw, nh };
     }
 
-    [[nodiscard]] rect inset(int all) const
+    [[nodiscard]] rect inset(int all) const { return inset(all, all, all, all); }
+
+    [[nodiscard]] rect moved(const point& offset) const { return rect{ _origin + offset, _size }; }
+
+    friend constexpr bool operator==(const rect& lhs, const rect& rhs)
     {
-        return inset(all, all, all, all);
+        return lhs._origin == rhs._origin && lhs._size == rhs._size;
     }
 
-    [[nodiscard]] rect moved(int dx, int dy) const
-    {
-        return rect{ x + dx, y + dy, width, height };
-    }
-
-    friend constexpr bool operator==(const rect& l, const rect& r)
-    {
-        return l.x == r.x && l.y == r.y && l.width == r.width && l.height == r.height;
-    }
-    friend constexpr bool operator!=(const rect& l, const rect& r)
-    {
-        return !(l == r);
-    }
+    friend constexpr bool operator!=(const rect& lhs, const rect& rhs) { return !(lhs == rhs); }
 };
 
 enum class align

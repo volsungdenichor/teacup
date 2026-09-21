@@ -14,11 +14,7 @@ std::string move_to(int x, int y)
 
 }  // namespace
 
-renderer::renderer(terminal& out, color_profile profile)
-    : out_{ out }
-    , profile_{ profile }
-{
-}
+renderer::renderer(terminal& out, color_profile profile) : out_{ out }, profile_{ profile } { }
 
 void renderer::invalidate()
 {
@@ -44,12 +40,13 @@ std::string renderer::build(const surface& frame)
     {
         for (int x = 0; x < frame.width(); ++x)
         {
-            const cell& current = frame.at(x, y);
+            const auto p = point{ x, y };
+            const cell& current = frame.at(p);
             if (current.width == 0)
             {
                 continue;  // trailing half of a wide glyph
             }
-            if (!full && previous_.contains(x, y) && previous_.at(x, y) == current)
+            if (!full && previous_.contains(p) && previous_.at(p) == current)
             {
                 continue;
             }

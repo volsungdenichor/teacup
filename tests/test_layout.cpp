@@ -21,8 +21,8 @@ TEST_CASE("percent constraints are relative to the available space")
         rect{ 0, 0, 10, 10 }, { constraint::percent(30), constraint::flex() });
 
     REQUIRE(parts.size() == 2);
-    CHECK(parts[0].height == 3);
-    CHECK(parts[1].height == 7);
+    CHECK(parts[0].height() == 3);
+    CHECK(parts[1].height() == 7);
 }
 
 TEST_CASE("gaps are subtracted before distribution")
@@ -41,8 +41,8 @@ TEST_CASE("weighted flex constraints split proportionally")
         rect{ 0, 0, 9, 1 }, { constraint::flex(1), constraint::flex(2) });
 
     REQUIRE(parts.size() == 2);
-    CHECK(parts[0].width == 3);
-    CHECK(parts[1].width == 6);
+    CHECK(parts[0].width() == 3);
+    CHECK(parts[1].width() == 6);
 }
 
 TEST_CASE("centered clamps to the parent area")
