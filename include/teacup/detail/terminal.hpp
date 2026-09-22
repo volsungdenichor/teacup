@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include "teacup/color.hpp"
 #include "teacup/geometry.hpp"
@@ -25,7 +26,7 @@ public:
     virtual void write(const std::string& data) = 0;
     virtual void flush() = 0;
 
-    virtual std::string read(int timeout_ms, bool& resized) = 0;
+    virtual std::pair<std::string, bool> read(int timeout_ms) = 0;
 
     virtual void set_alt_screen(bool enabled) = 0;
     virtual void set_cursor_visible(bool visible) = 0;

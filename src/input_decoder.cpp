@@ -389,7 +389,6 @@ std::vector<Message> InputDecoder::feed(const std::string& bytes)
             continue;
         }
 
-        // ESC followed by a regular key => alt modifier.
         std::size_t next = pos + 1;
         const char32_t cp = utf8::decode(buffer_, next);
         if (cp == 0x1b)

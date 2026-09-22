@@ -17,7 +17,6 @@ namespace teacup
 namespace
 {
 
-/// Thread-safe mailbox shared with command workers.
 class Mailbox
 {
 public:
@@ -239,8 +238,7 @@ int run_app(AppBase& app, const Options& opts)
 
     while (running)
     {
-        bool resized = false;
-        const std::string bytes = term->read(timeout_ms, resized);
+        const auto [bytes, resized] = term->read(timeout_ms);
 
         if (resized)
         {

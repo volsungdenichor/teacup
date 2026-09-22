@@ -124,35 +124,34 @@ public:
         buffer_.clear();
     }
 
-    std::string read(int timeout_ms, bool& resized) override
+    std::pair<std::string, bool> read(int timeout_ms) override
     {
-        resized = g_resized.exchange(false, std::memory_order_relaxed);
+        bool resized = g_resized.exchange(false, std::memory_order_relaxed);
         if (in_fd_ < 0)
         {
-            return {};
+            return { std::string{}, resized };
         }
 
         fd_set set;
         FD_ZERO(&set);
         FD_SET(in_fd_, &set);
         timeval tv{};
-        tv.tv_sec = timeout_ms / 1000;
-        tv.tv_usec = (timeout_ms % 1000) * 1000;
+        std::tie(tv.tv_sec, tv.tv_usec) = std::make_pair(timeout_ms / 1000, (timeout_ms % 1000) * 1000);
 
         const int ready = ::select(in_fd_ + 1, &set, nullptr, nullptr, &tv);
         if (ready <= 0)
         {
             resized = resized || g_resized.exchange(false, std::memory_order_relaxed);
-            return {};
+            return { std::string{}, resized };
         }
 
         char chunk[1024];
         const ssize_t count = ::read(in_fd_, chunk, sizeof(chunk));
         if (count <= 0)
         {
-            return {};
+            return { std::string{}, resized };
         }
-        return std::string{ chunk, static_cast<std::size_t>(count) };
+        return { std::string{ chunk, static_cast<std::size_t>(count) }, resized };
     }
 
     void set_alt_screen(bool enabled) override { write(enabled ? "\x1b[?1049h" : "\x1b[?1049l"); }

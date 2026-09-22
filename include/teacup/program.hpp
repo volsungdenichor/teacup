@@ -13,21 +13,17 @@ namespace teacup
 
 struct Options
 {
-    /// Render on the alternate screen buffer (restores the shell on exit).
     bool alt_screen = true;
     bool hide_cursor = true;
     bool mouse = false;
     bool bracketed_paste = true;
-    /// Upper bound on the repaint rate.
     std::chrono::milliseconds frame_interval{ 16 };
-    /// Color depth; detected from the environment by default.
     ColorProfile profile = detect_color_profile();
 };
 
 namespace detail
 {
 
-/// Type-erased application seen by the runtime.
 class AppBase
 {
 public:
@@ -41,7 +37,6 @@ int run_app(AppBase& app, const Options& opts);
 
 }  // namespace detail
 
-/// Runs `app` until it issues `quit()`. Returns 0 on success.
 template <typename App>
 int run(App&& app, const Options& opts = {})
 {

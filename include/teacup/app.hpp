@@ -9,7 +9,7 @@
 namespace teacup
 {
 
-template <typename Model>
+template <class Model>
 struct UpdateResult
 {
     Model model{};
@@ -25,13 +25,13 @@ struct UpdateResult
     UpdateResult(Model m, Cmd c) : model{ std::move(m) }, command{ std::move(c) } { }
 };
 
-template <typename Model>
+template <class Model>
 UpdateResult<std::decay_t<Model>> next(Model&& model)
 {
     return UpdateResult<std::decay_t<Model>>{ std::forward<Model>(model) };
 }
 
-template <typename Model>
+template <class Model>
 UpdateResult<std::decay_t<Model>> next(Model&& model, Cmd command)
 {
     return UpdateResult<std::decay_t<Model>>{ std::forward<Model>(model), std::move(command) };
@@ -40,16 +40,16 @@ UpdateResult<std::decay_t<Model>> next(Model&& model, Cmd command)
 namespace detail
 {
 
-template <typename T>
+template <class T>
 using decay_t = std::decay_t<T>;
 
-template <typename Init, typename Model>
+template <class Init, class Model>
 auto call_init(Init& init, const Model& model, int) -> decltype(Cmd{ init(model) })
 {
     return init(model);
 }
 
-template <typename Init, typename Model>
+template <class Init, class Model>
 Cmd call_init(Init& init, const Model&, long)
 {
     return init();
@@ -61,7 +61,7 @@ struct no_init
 };
 
 }  // namespace detail
-template <typename Model, typename Init, typename Update, typename View>
+template <class Model, class Init, class Update, class View>
 class App final : public detail::AppBase
 {
 public:
@@ -93,14 +93,14 @@ private:
     View view_;
 };
 
-template <typename Model, typename Init, typename Update, typename View>
+template <class Model, class Init, class Update, class View>
 App<detail::decay_t<Model>, detail::decay_t<Init>, detail::decay_t<Update>, detail::decay_t<View>> make_app(
     Model&& model, Init&& init, Update&& update, View&& view)
 {
     return { std::forward<Model>(model), std::forward<Init>(init), std::forward<Update>(update), std::forward<View>(view) };
 }
 
-template <typename Model, typename Update, typename View>
+template <class Model, class Update, class View>
 App<detail::decay_t<Model>, detail::no_init, detail::decay_t<Update>, detail::decay_t<View>> make_app(
     Model&& model, Update&& update, View&& view)
 {
