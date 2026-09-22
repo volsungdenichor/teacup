@@ -27,26 +27,31 @@ public:
         headers_ = std::move(value);
         return *this;
     }
+
     Table& rows(std::vector<std::vector<std::string>> value)
     {
         rows_ = std::move(value);
         return *this;
     }
+
     Table& header_style(const Style& s)
     {
         header_style_ = s;
         return *this;
     }
+
     Table& row_style(const Style& s)
     {
         row_style_ = s;
         return *this;
     }
+
     Table& renderer(RendererFn value)
     {
         renderer_ = std::move(value);
         return *this;
     }
+
     void render(Canvas target) const
     {
         if (renderer_)

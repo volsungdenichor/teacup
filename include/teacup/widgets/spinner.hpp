@@ -31,6 +31,7 @@ struct Spinner
             frames_ = std::move(value);
             return *this;
         }
+
         View& style(const Style& value)
         {
             style_ = value;
@@ -42,6 +43,7 @@ struct Spinner
             renderer_ = std::move(value);
             return *this;
         }
+
         void advance(State& state) const
         {
             if (!frames_.empty())
@@ -49,6 +51,7 @@ struct Spinner
                 state.frame = (state.frame + 1) % frames_.size();
             }
         }
+
         void render(const State& state, Canvas target) const
         {
             if (renderer_)

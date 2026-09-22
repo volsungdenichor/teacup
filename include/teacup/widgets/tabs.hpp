@@ -32,11 +32,13 @@ struct Tabs
             labels_ = std::move(value);
             return *this;
         }
+
         View& tab_style(const Style& value)
         {
             tab_style_ = value;
             return *this;
         }
+
         View& selected_style(const Style& value)
         {
             selected_style_ = value;

@@ -47,7 +47,9 @@ struct Viewport
             state.offset += amount;
             state.clamp_offset();
         }
+
         void page_down(State& state, int height) const { scroll(state, (std::max)(1, height)); }
+
         void page_up(State& state, int height) const { scroll(state, -((std::max)(1, height))); }
 
         bool update(State& state, const MouseEvent& event, const Rect& area) const

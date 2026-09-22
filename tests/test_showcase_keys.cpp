@@ -1,6 +1,4 @@
-// Drives the REAL showcase update() with synthesized key/mouse events to
-// prove keyboard and mouse reach the widgets. The showcase's main() is
-// renamed away so this test links the translation unit directly.
+
 #define main showcase_main
 #include "../examples/showcase/main.cpp"
 #undef main
@@ -12,9 +10,9 @@ using namespace teacup;
 namespace
 {
 
-model fresh_model()
+Model fresh_model()
 {
-    model initial;
+    Model initial;
     initial.menu.items = { "overview", "text input", "players", "table", "progress" };
     initial.input.value = "type here";
     initial.input.cursor = initial.input.value.size();
@@ -30,14 +28,14 @@ model fresh_model()
 
 TEST_CASE("showcase update(): focus starts on the menu hub")
 {
-    model m = fresh_model();
+    Model m = fresh_model();
     m = update(std::move(m), Message{ KeyEvent{ Key::none } }).model;
     CHECK(m.events.focus().focused() == "menu");
 }
 
 TEST_CASE("showcase update(): arrows navigate hub, enter activates players, arrows move it")
 {
-    model m = fresh_model();
+    Model m = fresh_model();
     auto step = [&](KeyEvent k) { m = update(std::move(m), Message{ k }).model; };
 
     step(KeyEvent{ Key::none });
@@ -66,7 +64,7 @@ TEST_CASE("showcase update(): arrows navigate hub, enter activates players, arro
 
 TEST_CASE("showcase update(): tab cycles focus")
 {
-    model m = fresh_model();
+    Model m = fresh_model();
     auto step = [&](KeyEvent k) { m = update(std::move(m), Message{ k }).model; };
 
     step(KeyEvent{ Key::none });
@@ -78,7 +76,7 @@ TEST_CASE("showcase update(): tab cycles focus")
 
 TEST_CASE("showcase update(): mouse click focuses and selects a player")
 {
-    model m = fresh_model();
+    Model m = fresh_model();
     m = update(std::move(m), Message{ KeyEvent{ Key::none } }).model;  // establish ring
 
     const layout::Areas areas = layout::resolve(showcase_tree(), Rect::from_size(m.screen_size));
@@ -95,7 +93,7 @@ TEST_CASE("showcase update(): mouse click focuses and selects a player")
 
 TEST_CASE("showcase update(): text input receives keys when focused")
 {
-    model m = fresh_model();
+    Model m = fresh_model();
     auto step = [&](KeyEvent k) { m = update(std::move(m), Message{ k }).model; };
 
     step(KeyEvent{ Key::none });

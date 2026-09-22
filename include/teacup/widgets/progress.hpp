@@ -32,17 +32,20 @@ struct Progress
             to_ = to;
             return *this;
         }
+
         View& track_style(const Style& s)
         {
             track_style_ = s;
             return *this;
         }
+
         View& glyphs(std::string filled, std::string empty)
         {
             filled_ = std::move(filled);
             empty_ = std::move(empty);
             return *this;
         }
+
         View& renderer(RendererFn value)
         {
             renderer_ = std::move(value);

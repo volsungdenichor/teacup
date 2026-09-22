@@ -6,7 +6,7 @@
 namespace
 {
 
-struct model
+struct Model
 {
     int count = 0;
     int ticks = 0;
@@ -22,12 +22,12 @@ teacup::Cmd schedule_tick()
     return teacup::tick(std::chrono::milliseconds{ 120 }, [] { return TickMessage{}; });
 }
 
-teacup::Cmd init(const model&)
+teacup::Cmd init(const Model&)
 {
     return schedule_tick();
 }
 
-teacup::UpdateResult<model> update(model m, const teacup::Message& msg)
+teacup::UpdateResult<Model> update(Model m, const teacup::Message& msg)
 {
     if (msg.is<TickMessage>())
     {
@@ -57,7 +57,7 @@ teacup::UpdateResult<model> update(model m, const teacup::Message& msg)
     return teacup::next(m);
 }
 
-void view(const model& m, teacup::Canvas screen)
+void view(const Model& m, teacup::Canvas screen)
 {
     using namespace teacup;
 
@@ -116,5 +116,5 @@ int main()
 {
     teacup::Options opts;
     opts.alt_screen = true;
-    return teacup::run(teacup::make_app(model{}, init, update, view), opts);
+    return teacup::run(teacup::make_app(Model{}, init, update, view), opts);
 }

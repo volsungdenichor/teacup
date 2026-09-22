@@ -8,7 +8,7 @@
 namespace
 {
 
-struct tick_message
+struct TickMessage
 {
 };
 
@@ -30,11 +30,11 @@ std::string country_name(Country country)
     return country == Country::usa ? "USA" : "Czech Republic";
 };
 
-struct model
+struct Model
 {
     int tick = 0;
     teacup::Size screen_size{ 80, 24 };
-    teacup::Router events;  // owns the focus ring; survives model copies
+    teacup::Router events;
     std::string last_key = "-";
     std::string last_mouse = "-";
     teacup::widgets::List<std::string>::State menu;
@@ -115,15 +115,15 @@ void render_player(const Player& player, teacup::Canvas row, const teacup::Style
 
 teacup::Cmd tick()
 {
-    return teacup::tick(std::chrono::milliseconds{ 180 }, [] { return tick_message{}; });
+    return teacup::tick(std::chrono::milliseconds{ 180 }, [] { return TickMessage{}; });
 }
 
-teacup::Cmd init(const model&)
+teacup::Cmd init(const Model&)
 {
     return tick();
 }
 
-teacup::UpdateResult<model> update(model m, const teacup::Message& message)
+teacup::UpdateResult<Model> update(Model m, const teacup::Message& message)
 {
     const teacup::widgets::List<std::string>::View menu_view;
     teacup::widgets::Tabs::View tabs_view;
@@ -142,7 +142,7 @@ teacup::UpdateResult<model> update(model m, const teacup::Message& message)
         m.events.focus().set(m.menu.selected == 1 ? "input" : m.menu.selected == 2 ? "players" : "menu");
     };
 
-    m.events.clear();  // rebind against this frame's model copy
+    m.events.clear();
     m.events.add("menu", teacup::route_keys(m.menu, menu_view));
     m.events.add("tabs", teacup::route_keys(m.tabs, tabs_view));
     m.events.add("tabs", teacup::route_mouse(m.tabs, tabs_view.labels({ "gallery", "layout", "events" }), "tabs"));
@@ -150,7 +150,7 @@ teacup::UpdateResult<model> update(model m, const teacup::Message& message)
     m.events.add("players", teacup::route_mouse(m.players, players_view, "players"));
     m.events.add("input", teacup::route_keys(m.input, input_view));
     m.events.add("input", teacup::route_mouse(m.input, input_view, "input"));
-    // Establish the ring from the tree once; the menu hub starts focused.
+
     if (m.events.focus().order().empty())
     {
         m.events.focus_order(areas.focus_order());
@@ -188,7 +188,7 @@ teacup::UpdateResult<model> update(model m, const teacup::Message& message)
         return teacup::next(m);
     }
 
-    if (message.is<tick_message>())
+    if (message.is<TickMessage>())
     {
         ++m.tick;
         ++m.spinner.frame;
@@ -264,7 +264,7 @@ teacup::UpdateResult<model> update(model m, const teacup::Message& message)
     return teacup::next(m);
 }
 
-void view(const model& m, teacup::Canvas screen)
+void view(const Model& m, teacup::Canvas screen)
 {
     using namespace teacup;
 
@@ -387,7 +387,7 @@ void view(const model& m, teacup::Canvas screen)
 
 int main()
 {
-    model initial;
+    Model initial;
     initial.menu.items = { "overview", "text input", "players", "table", "progress" };
     initial.tabs.selected = 0;
     initial.input.value = "type here";

@@ -24,20 +24,23 @@ struct Checkbox
     public:
         View& checked_style(const Style& value)
         {
-            checked_style_ = value;
+            checked_.style = value;
             return *this;
         }
+
         View& unchecked_style(const Style& value)
         {
-            unchecked_style_ = value;
+            unchecked_.style = value;
             return *this;
         }
+
         View& glyphs(std::string checked, std::string unchecked)
         {
-            checked_glyph_ = std::move(checked);
-            unchecked_glyph_ = std::move(unchecked);
+            checked_.glyph = std::move(checked);
+            unchecked_.glyph = std::move(unchecked);
             return *this;
         }
+
         bool update(State& state, const KeyEvent& event) const
         {
             if (event.code == Key::space || event.code == Key::enter)
@@ -47,6 +50,7 @@ struct Checkbox
             }
             return false;
         }
+
         bool update(State& state, const MouseEvent& event, const Rect& area) const
         {
             if (event.action == MouseAction::press && event.button == MouseButton::left && area.contains(event.position))
@@ -56,22 +60,26 @@ struct Checkbox
             }
             return false;
         }
+
         void render(const State& state, Canvas target) const
         {
             if (target.valid())
             {
                 target.text(
                     Point{ 0, 0 },
-                    state.checked ? checked_glyph_ : unchecked_glyph_,
-                    state.checked ? checked_style_ : unchecked_style_);
+                    state.checked ? checked_.glyph : unchecked_.glyph,
+                    state.checked ? checked_.style : unchecked_.style);
             }
         }
 
     private:
-        std::string checked_glyph_ = "[+]";
-        std::string unchecked_glyph_ = "[ ]";
-        Style checked_style_ = Style{}.fg(Color::hex("#a6e3a1")).bold();
-        Style unchecked_style_ = Style{}.fg(Color::hex("#6c7086"));
+        struct StateInfo
+        {
+            std::string glyph;
+            Style style;
+        };
+        StateInfo checked_ = { "[+]", Style{}.fg(Color::hex("#a6e3a1")).bold() };
+        StateInfo unchecked_ = { "[ ]", Style{}.fg(Color::hex("#6c7086")) };
     };
 };
 

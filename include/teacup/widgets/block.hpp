@@ -24,27 +24,33 @@ public:
         has_border_ = true;
         return *this;
     }
+
     Block& border_style(const Style& s)
     {
         border_style_ = s;
         return *this;
     }
+
     Block& title(std::string text)
     {
         title_ = std::move(text);
         return *this;
     }
+
     Block& title_style(const Style& s)
     {
         title_style_ = s;
         return *this;
     }
+
     Block& title_align(Align a)
     {
         title_align_ = a;
         return *this;
     }
+
     Block& padding(int all) { return padding(all, all, all, all); }
+
     Block& padding(int left, int top, int right, int bottom)
     {
         pad_left_ = left;
@@ -53,6 +59,7 @@ public:
         pad_bottom_ = bottom;
         return *this;
     }
+
     Block& background(const Color& c)
     {
         background_ = c;
@@ -64,6 +71,7 @@ public:
         renderer_ = std::move(value);
         return *this;
     }
+
     [[nodiscard]] Rect inner(const Rect& area) const
     {
         const int edge = has_border_ ? 1 : 0;

@@ -11,7 +11,6 @@ namespace teacup
 namespace detail
 {
 
-/// Abstraction over the host terminal; the only platform dependent piece.
 class Terminal
 {
 public:

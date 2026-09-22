@@ -13,11 +13,8 @@ namespace teacup
 namespace widgets
 {
 
-/// Splits `text` into lines no wider than `width` columns, breaking on spaces
-/// when possible and honouring embedded newlines.
 std::vector<std::string> wrap_text(const std::string& text, int width);
 
-/// A block of styled, optionally wrapped and aligned text.
 class Text
 {
 public:
@@ -31,21 +28,25 @@ public:
         content_ = std::move(value);
         return *this;
     }
+
     Text& style(const Style& s)
     {
         style_ = s;
         return *this;
     }
+
     Text& align(Align a)
     {
         align_ = a;
         return *this;
     }
+
     Text& vertical_align(Align a)
     {
         valign_ = a;
         return *this;
     }
+
     Text& wrap(bool enabled)
     {
         wrap_ = enabled;
@@ -57,7 +58,7 @@ public:
         renderer_ = std::move(value);
         return *this;
     }
-    /// Number of rows the text needs at the given width.
+
     [[nodiscard]] int height_for(int width) const { return static_cast<int>(lines(width).size()); }
 
     void render(Canvas target) const
