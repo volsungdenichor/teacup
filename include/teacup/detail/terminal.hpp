@@ -25,8 +25,6 @@ public:
     virtual void write(const std::string& data) = 0;
     virtual void flush() = 0;
 
-    /// Blocks up to `timeout_ms` for input; returns bytes read (may be empty).
-    /// `resized` is set when a resize was observed while waiting.
     virtual std::string read(int timeout_ms, bool& resized) = 0;
 
     virtual void set_alt_screen(bool enabled) = 0;
@@ -35,7 +33,6 @@ public:
     virtual void set_bracketed_paste(bool enabled) = 0;
 };
 
-/// Creates the terminal implementation for the current platform.
 std::unique_ptr<Terminal> make_terminal();
 
 }  // namespace detail
