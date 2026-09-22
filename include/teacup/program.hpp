@@ -11,8 +11,7 @@
 namespace teacup
 {
 
-/// Runtime configuration of a program.
-struct options
+struct Options
 {
     /// Render on the alternate screen buffer (restores the shell on exit).
     bool alt_screen = true;
@@ -22,31 +21,31 @@ struct options
     /// Upper bound on the repaint rate.
     std::chrono::milliseconds frame_interval{ 16 };
     /// Color depth; detected from the environment by default.
-    color_profile profile = detect_color_profile();
+    ColorProfile profile = detect_color_profile();
 };
 
 namespace detail
 {
 
 /// Type-erased application seen by the runtime.
-class app_base
+class AppBase
 {
 public:
-    virtual ~app_base() = default;
-    virtual cmd init() = 0;
-    virtual cmd update(const message& msg) = 0;
-    virtual void view(canvas target) const = 0;
+    virtual ~AppBase() = default;
+    virtual Cmd init() = 0;
+    virtual Cmd update(const Message& msg) = 0;
+    virtual void view(Canvas target) const = 0;
 };
 
-int run_app(app_base& app, const options& opts);
+int run_app(AppBase& app, const Options& opts);
 
 }  // namespace detail
 
 /// Runs `app` until it issues `quit()`. Returns 0 on success.
 template <typename App>
-int run(App&& app, const options& opts = {})
+int run(App&& app, const Options& opts = {})
 {
-    detail::app_base& base = app;
+    detail::AppBase& base = app;
     return detail::run_app(base, opts);
 }
 

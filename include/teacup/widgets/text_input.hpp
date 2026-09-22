@@ -15,48 +15,47 @@ namespace teacup
 namespace widgets
 {
 
-struct text_input
+struct TextInput
 {
-    struct state_type
+    struct State
     {
         std::string value;
         std::size_t cursor = 0;
     };
 
-    /// View and editing logic for an application-owned text_input_state.
-    class view_type
+    class View
     {
     public:
-        using renderer_fn = std::function<void(const state_type&, canvas)>;
+        using RendererFn = std::function<void(const State&, Canvas)>;
 
-        view_type& text_style(const teacup::style& value)
+        View& text_style(const Style& value)
         {
             text_style_ = value;
             return *this;
         }
-        view_type& cursor_style(const teacup::style& value)
+        View& cursor_style(const Style& value)
         {
             cursor_style_ = value;
             return *this;
         }
 
-        view_type& renderer(renderer_fn value)
+        View& renderer(RendererFn value)
         {
             renderer_ = std::move(value);
             return *this;
         }
 
-        bool update(state_type& state, const key_event& event) const
+        bool update(State& state, const KeyEvent& event) const
         {
             normalize_cursor(state);
-            if (event.code == key::space)
+            if (event.code == Key::space)
             {
                 state.value.insert(state.cursor, " ");
                 ++state.cursor;
                 return true;
             }
-            if (event.code == key::character && !event.text.empty() && !has(event.modifiers, modifier::ctrl)
-                && !has(event.modifiers, modifier::alt))
+            if (event.code == Key::character && !event.text.empty() && !has(event.modifiers, Modifier::ctrl)
+                && !has(event.modifiers, Modifier::alt))
             {
                 state.value.insert(state.cursor, event.text);
                 state.cursor += event.text.size();
@@ -65,11 +64,11 @@ struct text_input
             }
             switch (event.code)
             {
-                case key::left: state.cursor = previous_cursor(state); return true;
-                case key::right: state.cursor = next_cursor(state, state.cursor); return true;
-                case key::home: state.cursor = 0; return true;
-                case key::end: state.cursor = state.value.size(); return true;
-                case key::backspace:
+                case Key::left: state.cursor = previous_cursor(state); return true;
+                case Key::right: state.cursor = next_cursor(state, state.cursor); return true;
+                case Key::home: state.cursor = 0; return true;
+                case Key::end: state.cursor = state.value.size(); return true;
+                case Key::backspace:
                     if (state.cursor > 0)
                     {
                         const std::size_t start = previous_cursor(state);
@@ -77,7 +76,7 @@ struct text_input
                         state.cursor = start;
                     }
                     return true;
-                case key::del:
+                case Key::del:
                     if (state.cursor < state.value.size())
                     {
                         state.value.erase(state.cursor, next_cursor(state, state.cursor) - state.cursor);
@@ -87,7 +86,7 @@ struct text_input
             }
         }
 
-        bool update(state_type& state, const paste_event& event) const
+        bool update(State& state, const PasteEvent& event) const
         {
             normalize_cursor(state);
             state.value.insert(state.cursor, event.text);
@@ -96,9 +95,9 @@ struct text_input
             return true;
         }
 
-        bool update(state_type& state, const mouse_event& event, const rect& area) const
+        bool update(State& state, const MouseEvent& event, const Rect& area) const
         {
-            if (event.action != mouse_action::press || event.button != mouse_button::left || !area.contains(event.position))
+            if (event.action != MouseAction::press || event.button != MouseButton::left || !area.contains(event.position))
             {
                 return false;
             }
@@ -120,7 +119,7 @@ struct text_input
             return true;
         }
 
-        void render(const state_type& state, canvas target) const
+        void render(const State& state, Canvas target) const
         {
             if (renderer_)
             {
@@ -141,18 +140,18 @@ struct text_input
                 start = next_cursor(state, start);
             }
             target.fill(" ", text_style_);
-            target.text(point{ 0, 0 }, state.value.substr(start), text_style_);
+            target.text(Point{ 0, 0 }, state.value.substr(start), text_style_);
             const int cursor_x = utf8::width(state.value.substr(start, cursor - start));
             if (cursor_x < target.width())
             {
                 const std::string glyph
                     = cursor < state.value.size() ? state.value.substr(cursor, next_cursor(state, cursor) - cursor) : " ";
-                target.text(point{ cursor_x, 0 }, glyph, cursor_style_);
+                target.text(Point{ cursor_x, 0 }, glyph, cursor_style_);
             }
         }
 
     private:
-        static void normalize_cursor(state_type& state)
+        static void normalize_cursor(State& state)
         {
             state.cursor = std::min(state.cursor, state.value.size());
             while (state.cursor > 0 && state.cursor < state.value.size()
@@ -161,7 +160,7 @@ struct text_input
                 --state.cursor;
             }
         }
-        static std::size_t previous_cursor(const state_type& state)
+        static std::size_t previous_cursor(const State& state)
         {
             if (state.cursor == 0)
                 return 0;
@@ -170,7 +169,7 @@ struct text_input
                 --position;
             return position;
         }
-        static std::size_t next_cursor(const state_type& state, std::size_t position)
+        static std::size_t next_cursor(const State& state, std::size_t position)
         {
             if (position >= state.value.size())
                 return state.value.size();
@@ -180,9 +179,9 @@ struct text_input
             return position;
         }
 
-        teacup::style text_style_;
-        teacup::style cursor_style_ = teacup::style{}.reverse();
-        renderer_fn renderer_;
+        Style text_style_;
+        Style cursor_style_ = Style{}.reverse();
+        RendererFn renderer_;
     };
 };
 

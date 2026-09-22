@@ -6,8 +6,7 @@
 namespace teacup
 {
 
-/// Terminal color profile, used to degrade truecolor gracefully.
-enum class color_profile
+enum class ColorProfile
 {
     no_color,
     ansi16,
@@ -15,128 +14,91 @@ enum class color_profile
     truecolor
 };
 
-/// A color that is either unset ("default"), a palette index or an RGB triple.
-class color
+class Color
 {
 public:
-    enum class kind : std::uint8_t
+    enum class Kind : std::uint8_t
     {
         unset,
         indexed,
         rgb
     };
 
-    constexpr color() = default;
+    constexpr Color() = default;
 
-    static constexpr color unset()
-    {
-        return color{};
-    }
+    static constexpr Color unset() { return Color{}; }
 
-    static constexpr color indexed(std::uint8_t index)
-    {
-        return color{ kind::indexed, index, 0, 0 };
-    }
+    static constexpr Color indexed(std::uint8_t index) { return Color{ Kind::indexed, index, 0, 0 }; }
 
-    static constexpr color rgb(std::uint8_t r, std::uint8_t g, std::uint8_t b)
-    {
-        return color{ kind::rgb, r, g, b };
-    }
+    static constexpr Color rgb(std::uint8_t r, std::uint8_t g, std::uint8_t b) { return Color{ Kind::rgb, r, g, b }; }
 
     /// Parses "#rgb", "#rrggbb" (with or without '#'). Returns unset on failure.
-    static color hex(const std::string& text);
+    static Color hex(const std::string& text);
 
     /// Linear interpolation in sRGB space, `t` clamped to [0, 1].
-    static color mix(const color& from, const color& to, double t);
+    static Color mix(const Color& from, const Color& to, double t);
 
-    [[nodiscard]] constexpr kind type() const
-    {
-        return kind_;
-    }
-    [[nodiscard]] constexpr bool is_set() const
-    {
-        return kind_ != kind::unset;
-    }
-    [[nodiscard]] constexpr std::uint8_t index() const
-    {
-        return r_;
-    }
-    [[nodiscard]] constexpr std::uint8_t red() const
-    {
-        return r_;
-    }
-    [[nodiscard]] constexpr std::uint8_t green() const
-    {
-        return g_;
-    }
-    [[nodiscard]] constexpr std::uint8_t blue() const
-    {
-        return b_;
-    }
+    [[nodiscard]] constexpr Kind type() const { return kind_; }
+    [[nodiscard]] constexpr bool is_set() const { return kind_ != Kind::unset; }
+    [[nodiscard]] constexpr std::uint8_t index() const { return r_; }
+    [[nodiscard]] constexpr std::uint8_t red() const { return r_; }
+    [[nodiscard]] constexpr std::uint8_t green() const { return g_; }
+    [[nodiscard]] constexpr std::uint8_t blue() const { return b_; }
 
     /// Converts the color so that it can be displayed under `profile`.
-    [[nodiscard]] color adapt(color_profile profile) const;
+    [[nodiscard]] Color adapt(ColorProfile profile) const;
 
     /// Emits the SGR parameters (without ESC[ and final 'm').
-    [[nodiscard]] std::string sgr(bool foreground, color_profile profile) const;
+    [[nodiscard]] std::string sgr(bool foreground, ColorProfile profile) const;
 
-    friend constexpr bool operator==(const color& l, const color& r)
+    friend constexpr bool operator==(const Color& l, const Color& r)
     {
         return l.kind_ == r.kind_ && l.r_ == r.r_ && l.g_ == r.g_ && l.b_ == r.b_;
     }
-    friend constexpr bool operator!=(const color& l, const color& r)
-    {
-        return !(l == r);
-    }
+    friend constexpr bool operator!=(const Color& l, const Color& r) { return !(l == r); }
 
 private:
-    constexpr color(kind k, std::uint8_t r, std::uint8_t g, std::uint8_t b)
-        : kind_{ k }
-        , r_{ r }
-        , g_{ g }
-        , b_{ b }
-    {
-    }
+    constexpr Color(Kind k, std::uint8_t r, std::uint8_t g, std::uint8_t b) : kind_{ k }, r_{ r }, g_{ g }, b_{ b } { }
 
-    kind kind_ = kind::unset;
+    Kind kind_ = Kind::unset;
     std::uint8_t r_ = 0;
     std::uint8_t g_ = 0;
     std::uint8_t b_ = 0;
 };
 
 /// Detects the profile from the environment ($NO_COLOR, $COLORTERM, $TERM).
-color_profile detect_color_profile();
+ColorProfile detect_color_profile();
 
 namespace palette
 {
 
-inline color subtle()
+inline Color subtle()
 {
-    return color::hex("#6c7086");
+    return Color::hex("#6c7086");
 }
-inline color text()
+inline Color text()
 {
-    return color::hex("#cdd6f4");
+    return Color::hex("#cdd6f4");
 }
-inline color accent()
+inline Color accent()
 {
-    return color::hex("#7d56f4");
+    return Color::hex("#7d56f4");
 }
-inline color success()
+inline Color success()
 {
-    return color::hex("#a6e3a1");
+    return Color::hex("#a6e3a1");
 }
-inline color warning()
+inline Color warning()
 {
-    return color::hex("#f9e2af");
+    return Color::hex("#f9e2af");
 }
-inline color danger()
+inline Color danger()
 {
-    return color::hex("#f38ba8");
+    return Color::hex("#f38ba8");
 }
-inline color surface()
+inline Color surface()
 {
-    return color::hex("#1e1e2e");
+    return Color::hex("#1e1e2e");
 }
 
 }  // namespace palette

@@ -9,7 +9,7 @@ using namespace teacup;
 namespace
 {
 
-layout::node sample_tree()
+layout::Node sample_tree()
 {
     using namespace layout;
     return column({
@@ -40,34 +40,34 @@ layout::node sample_tree()
 
 TEST_CASE("a resolved tree matches hand-computed splits")
 {
-    const layout::areas areas = layout::resolve(sample_tree(), rect{ 0, 0, 80, 24 });
+    const layout::Areas areas = layout::resolve(sample_tree(), Rect{ 0, 0, 80, 24 });
 
-    CHECK(areas.get("header") == rect{ 0, 0, 80, 7 });
-    CHECK(areas.get("title") == rect{ 2, 2, 62, 1 });
-    CHECK(areas.get("spinner") == rect{ 64, 2, 14, 1 });
-    CHECK(areas.get("tabs") == rect{ 2, 4, 76, 1 });
-    CHECK(areas.get("navigation") == rect{ 0, 7, 33, 16 });
-    CHECK(areas.get("menu") == rect{ 2, 9, 29, 6 });
-    CHECK(areas.get("players") == rect{ 2, 16, 29, 5 });
-    CHECK(areas.get("components") == rect{ 34, 7, 46, 16 });
-    CHECK(areas.get("progress") == rect{ 36, 9, 42, 1 });
-    CHECK(areas.get("table") == rect{ 36, 11, 42, 4 });
-    CHECK(areas.get("input-box") == rect{ 36, 16, 42, 5 });
-    CHECK(areas.get("input") == rect{ 37, 17, 40, 3 });
-    CHECK(areas.get("footer") == rect{ 0, 23, 80, 1 });
+    CHECK(areas.get("header") == Rect{ 0, 0, 80, 7 });
+    CHECK(areas.get("title") == Rect{ 2, 2, 62, 1 });
+    CHECK(areas.get("spinner") == Rect{ 64, 2, 14, 1 });
+    CHECK(areas.get("tabs") == Rect{ 2, 4, 76, 1 });
+    CHECK(areas.get("navigation") == Rect{ 0, 7, 33, 16 });
+    CHECK(areas.get("menu") == Rect{ 2, 9, 29, 6 });
+    CHECK(areas.get("players") == Rect{ 2, 16, 29, 5 });
+    CHECK(areas.get("components") == Rect{ 34, 7, 46, 16 });
+    CHECK(areas.get("progress") == Rect{ 36, 9, 42, 1 });
+    CHECK(areas.get("table") == Rect{ 36, 11, 42, 4 });
+    CHECK(areas.get("input-box") == Rect{ 36, 16, 42, 5 });
+    CHECK(areas.get("input") == Rect{ 37, 17, 40, 3 });
+    CHECK(areas.get("footer") == Rect{ 0, 23, 80, 1 });
 }
 
-TEST_CASE("resolution follows the screen rect")
+TEST_CASE("resolution follows the screen Rect")
 {
-    const layout::areas areas = layout::resolve(sample_tree(), rect{ 4, 3, 40, 20 });
+    const layout::Areas areas = layout::resolve(sample_tree(), Rect{ 4, 3, 40, 20 });
 
-    CHECK(areas.get("header") == rect{ 4, 3, 40, 7 });
-    CHECK(areas.get("footer") == rect{ 4, 22, 40, 1 });
+    CHECK(areas.get("header") == Rect{ 4, 3, 40, 7 });
+    CHECK(areas.get("footer") == Rect{ 4, 22, 40, 1 });
 }
 
 TEST_CASE("hit returns the deepest named area containing the point")
 {
-    const layout::areas areas = layout::resolve(sample_tree(), rect{ 0, 0, 80, 24 });
+    const layout::Areas areas = layout::resolve(sample_tree(), Rect{ 0, 0, 80, 24 });
 
     const std::string* menu = areas.hit({ 5, 10 });
     REQUIRE(menu != nullptr);
@@ -88,7 +88,7 @@ TEST_CASE("hit returns the deepest named area containing the point")
 
 TEST_CASE("unnamed leaves are not registered")
 {
-    const layout::areas areas = layout::resolve(layout::space(), rect{ 0, 0, 10, 4 });
+    const layout::Areas areas = layout::resolve(layout::space(), Rect{ 0, 0, 10, 4 });
 
     CHECK(areas.empty());
     CHECK(areas.hit({ 1, 1 }) == nullptr);
@@ -96,7 +96,7 @@ TEST_CASE("unnamed leaves are not registered")
 
 TEST_CASE("missing names are reported")
 {
-    const layout::areas areas = layout::resolve(sample_tree(), rect{ 0, 0, 80, 24 });
+    const layout::Areas areas = layout::resolve(sample_tree(), Rect{ 0, 0, 80, 24 });
 
     CHECK(areas.find("nope") == nullptr);
     CHECK_THROWS_AS(areas.get("nope"), std::out_of_range);
@@ -105,7 +105,7 @@ TEST_CASE("missing names are reported")
 TEST_CASE("focusable leaves surface a tab order")
 {
     using namespace layout;
-    const areas areas = resolve(
+    const Areas areas = resolve(
         column({
             fixed(1, leaf("title")),
             flex(focusable("body")),
@@ -114,7 +114,7 @@ TEST_CASE("focusable leaves surface a tab order")
                 flex(leaf("plain")),
             })))),
         }),
-        rect{ 0, 0, 10, 4 });
+        Rect{ 0, 0, 10, 4 });
 
     REQUIRE(areas.focus_order().size() == 3);
     CHECK(areas.focus_order()[0] == "body");

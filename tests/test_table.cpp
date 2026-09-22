@@ -7,11 +7,11 @@ using namespace teacup;
 
 TEST_CASE("table widget renders headers and rows")
 {
-    surface s{ size{ 20, 4 } };
+    Surface s{ Size{ 20, 4 } };
     s.clear();
-    canvas c{ s };
+    Canvas c{ s };
 
-    widgets::table t;
+    widgets::Table t;
     t.headers({ "name", "score" })
         .rows({ { "alpha", "10" }, { "beta", "2" } })
         .render(c);

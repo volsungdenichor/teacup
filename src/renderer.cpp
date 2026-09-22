@@ -14,15 +14,15 @@ std::string move_to(int x, int y)
 
 }  // namespace
 
-renderer::renderer(terminal& out, color_profile profile) : out_{ out }, profile_{ profile } { }
+Renderer::Renderer(Terminal& out, ColorProfile profile) : out_{ out }, profile_{ profile } { }
 
-void renderer::invalidate()
+void Renderer::invalidate()
 {
     full_repaint_ = true;
-    previous_ = surface{};
+    previous_ = Surface{};
 }
 
-std::string renderer::build(const surface& frame)
+std::string Renderer::build(const Surface& frame)
 {
     const bool full = full_repaint_ || previous_.size() != frame.size();
     std::string out;
@@ -31,7 +31,7 @@ std::string renderer::build(const surface& frame)
         out += "\x1b[0m\x1b[2J";
     }
 
-    style active{};
+    Style active{};
     bool style_known = false;
     int cursor_x = -1;
     int cursor_y = -1;
@@ -40,8 +40,8 @@ std::string renderer::build(const surface& frame)
     {
         for (int x = 0; x < frame.width(); ++x)
         {
-            const auto p = point{ x, y };
-            const cell& current = frame.at(p);
+            const auto p = Point{ x, y };
+            const Cell& current = frame.at(p);
             if (current.width == 0)
             {
                 continue;  // trailing half of a wide glyph
@@ -75,7 +75,7 @@ std::string renderer::build(const surface& frame)
     return out;
 }
 
-void renderer::draw(const surface& frame)
+void Renderer::draw(const Surface& frame)
 {
     const std::string data = build(frame);
     if (data.empty())

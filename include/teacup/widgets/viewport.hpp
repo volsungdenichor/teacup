@@ -15,9 +15,9 @@ namespace teacup
 namespace widgets
 {
 
-struct viewport
+struct Viewport
 {
-    struct state_type
+    struct State
     {
         std::vector<std::string> lines;
         int offset = 0;
@@ -25,44 +25,43 @@ struct viewport
         void clamp_offset() { offset = std::clamp(offset, 0, static_cast<int>(lines.size())); }
     };
 
-    /// View and interaction logic for an application-owned viewport_state.
-    class view_type
+    class View
     {
     public:
-        using renderer_fn = std::function<void(const state_type&, canvas)>;
+        using RendererFn = std::function<void(const State&, Canvas)>;
 
-        view_type& style(const teacup::style& value)
+        View& style(const Style& value)
         {
             style_ = value;
             return *this;
         }
 
-        view_type& renderer(renderer_fn value)
+        View& renderer(RendererFn value)
         {
             renderer_ = std::move(value);
             return *this;
         }
 
-        void scroll(state_type& state, int amount) const
+        void scroll(State& state, int amount) const
         {
             state.offset += amount;
             state.clamp_offset();
         }
-        void page_down(state_type& state, int height) const { scroll(state, (std::max)(1, height)); }
-        void page_up(state_type& state, int height) const { scroll(state, -((std::max)(1, height))); }
+        void page_down(State& state, int height) const { scroll(state, (std::max)(1, height)); }
+        void page_up(State& state, int height) const { scroll(state, -((std::max)(1, height))); }
 
-        bool update(state_type& state, const mouse_event& event, const rect& area) const
+        bool update(State& state, const MouseEvent& event, const Rect& area) const
         {
             if (!area.contains(event.position))
             {
                 return false;
             }
-            if (event.button == mouse_button::wheel_up)
+            if (event.button == MouseButton::wheel_up)
             {
                 scroll(state, -1);
                 return true;
             }
-            if (event.button == mouse_button::wheel_down)
+            if (event.button == MouseButton::wheel_down)
             {
                 scroll(state, 1);
                 return true;
@@ -70,7 +69,7 @@ struct viewport
             return false;
         }
 
-        void render(const state_type& state, canvas target) const
+        void render(const State& state, Canvas target) const
         {
             if (renderer_)
             {
@@ -84,18 +83,18 @@ struct viewport
             const int first = std::min(state.offset, (std::max)(0, static_cast<int>(state.lines.size()) - target.height()));
             for (int row = 0; row < target.height(); ++row)
             {
-                target.fill(rect{ 0, row, target.width(), 1 }, " ");
+                target.fill(Rect{ Point{ 0, row }, Size{ target.width(), 1 } }, " ");
                 const int index = first + row;
                 if (index >= 0 && index < static_cast<int>(state.lines.size()))
                 {
-                    target.text(point{ 0, row }, state.lines[static_cast<std::size_t>(index)], style_);
+                    target.text(Point{ 0, row }, state.lines[static_cast<std::size_t>(index)], style_);
                 }
             }
         }
 
     private:
-        teacup::style style_;
-        renderer_fn renderer_;
+        Style style_;
+        RendererFn renderer_;
     };
 };
 

@@ -14,43 +14,42 @@ namespace teacup
 namespace widgets
 {
 
-struct spinner
+struct Spinner
 {
-    struct state_type
+    struct State
     {
         std::size_t frame = 0;
     };
 
-    /// View configuration for an application-owned spinner_state.
-    class view_type
+    class View
     {
     public:
-        using renderer_fn = std::function<void(const state_type&, canvas)>;
+        using RendererFn = std::function<void(const State&, Canvas)>;
 
-        view_type& frames(std::vector<std::string> value)
+        View& frames(std::vector<std::string> value)
         {
             frames_ = std::move(value);
             return *this;
         }
-        view_type& style(const teacup::style& value)
+        View& style(const Style& value)
         {
             style_ = value;
             return *this;
         }
 
-        view_type& renderer(renderer_fn value)
+        View& renderer(RendererFn value)
         {
             renderer_ = std::move(value);
             return *this;
         }
-        void advance(state_type& state) const
+        void advance(State& state) const
         {
             if (!frames_.empty())
             {
                 state.frame = (state.frame + 1) % frames_.size();
             }
         }
-        void render(const state_type& state, canvas target) const
+        void render(const State& state, Canvas target) const
         {
             if (renderer_)
             {
@@ -61,13 +60,13 @@ struct spinner
             {
                 return;
             }
-            target.text(point{ 0, 0 }, frames_[state.frame % frames_.size()], style_);
+            target.text(Point{ 0, 0 }, frames_[state.frame % frames_.size()], style_);
         }
 
     private:
         std::vector<std::string> frames_{ "|", "/", "-", "\\" };
-        teacup::style style_;
-        renderer_fn renderer_;
+        Style style_;
+        RendererFn renderer_;
     };
 };
 

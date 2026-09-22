@@ -7,12 +7,12 @@ using namespace teacup;
 
 TEST_CASE("canvas clips writes to its area")
 {
-    surface s{ size{ 6, 2 } };
+    Surface s{ Size{ 6, 2 } };
     s.clear();
-    canvas c{ s };
+    Canvas c{ s };
 
-    c.text(point{ 0, 0 }, "abcdefghij");
-    c.text(point{ -2, 1 }, "xy");
+    c.text(Point{ 0, 0 }, "abcdefghij");
+    c.text(Point{ -2, 1 }, "xy");
 
     CHECK(s.row_text(0) == "abcdef");
     CHECK(s.row_text(1) == "      ");
@@ -20,14 +20,14 @@ TEST_CASE("canvas clips writes to its area")
 
 TEST_CASE("sub canvas translates and clips coordinates")
 {
-    surface s{ size{ 8, 3 } };
+    Surface s{ Size{ 8, 3 } };
     s.clear();
-    canvas c{ s };
+    Canvas c{ s };
 
-    canvas inner = c.sub(rect{ 2, 1, 3, 1 });
-    REQUIRE(inner.size() == size{ 3, 1 });
+    Canvas inner = c.sub(Rect{ 2, 1, 3, 1 });
+    REQUIRE(inner.size() == Size{ 3, 1 });
 
-    inner.text(point{ 0, 0 }, "abcdef");
+    inner.text(Point{ 0, 0 }, "abcdef");
 
     CHECK(s.row_text(0) == "        ");
     CHECK(s.row_text(1) == "  abc   ");
@@ -35,14 +35,14 @@ TEST_CASE("sub canvas translates and clips coordinates")
 
 TEST_CASE("block reserves border and padding")
 {
-    widgets::block b;
-    b.border(border::rounded()).padding(1);
-    CHECK(b.inner(rect{ 0, 0, 10, 6 }) == rect{ 2, 2, 6, 2 });
+    widgets::Block b;
+    b.border(Border::rounded()).padding(1);
+    CHECK(b.inner(Rect{ 0, 0, 10, 6 }) == Rect{ 2, 2, 6, 2 });
 
-    surface s{ size{ 6, 3 } };
+    Surface s{ Size{ 6, 3 } };
     s.clear();
-    canvas c{ s };
-    widgets::block{}.border(border::ascii()).render(c);
+    Canvas c{ s };
+    widgets::Block{}.border(Border::ascii()).render(c);
 
     CHECK(s.row_text(0) == "+----+");
     CHECK(s.row_text(1) == "|    |");
@@ -51,23 +51,22 @@ TEST_CASE("block reserves border and padding")
 
 TEST_CASE("block title is centered inside the top border")
 {
-    surface s{ size{ 9, 3 } };
+    Surface s{ Size{ 9, 3 } };
     s.clear();
-    canvas c{ s };
-    widgets::block{}.border(border::ascii()).title("hi").title_align(align::center).render(c);
+    Canvas c{ s };
+    widgets::Block{}.border(Border::ascii()).title("hi").title_align(Align::center).render(c);
 
     CHECK(s.row_text(0) == "+--hi---+");
 }
 
 TEST_CASE("wide glyphs occupy two columns")
 {
-    surface s{ size{ 4, 1 } };
+    Surface s{ Size{ 4, 1 } };
     s.clear();
-    canvas c{ s };
-    c.text(point{ 0, 0 }, "\xe6\x97\xa5x");  // U+65E5 then 'x'
+    Canvas c{ s };
+    c.text(Point{ 0, 0 }, "\xe6\x97\xa5x");  // U+65E5 then 'x'
 
-    CHECK(s.at(point{0, 0}).width == 2);
-    CHECK(s.at(point{1, 0}).width == 0);
-    CHECK(s.at(point{2, 0}).text == "x");
+    CHECK(s.at(Point{ 0, 0 }).width == 2);
+    CHECK(s.at(Point{ 1, 0 }).width == 0);
+    CHECK(s.at(Point{ 2, 0 }).text == "x");
 }
-

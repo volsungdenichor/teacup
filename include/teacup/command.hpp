@@ -12,132 +12,112 @@
 namespace teacup
 {
 
-/// An asynchronous side effect that eventually produces a message.
-///
-/// Commands are the only place where I/O, timers or blocking work belong; the
-/// runtime executes them off the update thread and feeds their result back in.
-class cmd
+class Cmd
 {
 public:
-    using function = std::function<message()>;
+    using Function = std::function<Message()>;
 
-    cmd() = default;
+    Cmd() = default;
 
-    cmd(function fn)  // NOLINT(google-explicit-constructor): ergonomics
+    Cmd(Function fn)  // NOLINT(google-explicit-constructor): ergonomics
         : items_{ std::move(fn) }
     {
     }
 
-    static cmd none()
-    {
-        return cmd{};
-    }
+    static Cmd none() { return Cmd{}; }
 
-    [[nodiscard]] bool empty() const
-    {
-        return items_.empty();
-    }
+    [[nodiscard]] bool empty() const { return items_.empty(); }
 
-    [[nodiscard]] const std::vector<function>& items() const
-    {
-        return items_;
-    }
+    [[nodiscard]] const std::vector<Function>& items() const { return items_; }
 
     /// Concatenates two commands; both run concurrently.
-    cmd& operator+=(const cmd& other)
+    Cmd& operator+=(const Cmd& other)
     {
         items_.insert(items_.end(), other.items_.begin(), other.items_.end());
         return *this;
     }
 
-    friend cmd operator+(cmd l, const cmd& r)
+    friend Cmd operator+(Cmd l, const Cmd& r)
     {
         l += r;
         return l;
     }
 
 private:
-    std::vector<function> items_{};
+    std::vector<Function> items_{};
 };
 
-/// Runs every command concurrently.
-template <typename... Cmds>
-cmd batch(Cmds&&... cmds)
+template <class... Cmds>
+Cmd batch(Cmds&&... cmds)
 {
-    cmd result;
+    Cmd result;
     const int expander[] = { 0, (result += cmds, 0)... };
     static_cast<void>(expander);
     return result;
 }
 
-/// Runs commands one after another on a single worker; messages arrive in order.
-cmd sequence(std::vector<cmd> cmds);
-
-/// Internal message asking the runtime to stop; produced by `quit()`.
-struct quit_message
+Cmd sequence(std::vector<Cmd> cmds);
+struct QuitMessage
 {
 };
-
-/// Internal message toggling terminal features.
-struct set_alt_screen_message
+struct SetAltScreenMessage
 {
     bool enabled = true;
 };
-struct set_cursor_visible_message
+struct SetCursorVisibleMessage
 {
     bool visible = false;
 };
-struct set_mouse_enabled_message
+struct SetMouseEnabledMessage
 {
     bool enabled = true;
 };
 
-/// Stops the program and restores the terminal.
-inline cmd quit()
+inline Cmd quit()
 {
-    return cmd{ [] { return message{ quit_message{} }; } };
+    return Cmd{ [] { return Message{ QuitMessage{} }; } };
 }
 
-inline cmd enter_alt_screen()
+inline Cmd enter_alt_screen()
 {
-    return cmd{ [] { return message{ set_alt_screen_message{ true } }; } };
+    return Cmd{ [] { return Message{ SetAltScreenMessage{ true } }; } };
 }
-inline cmd exit_alt_screen()
+inline Cmd exit_alt_screen()
 {
-    return cmd{ [] { return message{ set_alt_screen_message{ false } }; } };
+    return Cmd{ [] { return Message{ SetAltScreenMessage{ false } }; } };
 }
-inline cmd show_cursor()
+inline Cmd show_cursor()
 {
-    return cmd{ [] { return message{ set_cursor_visible_message{ true } }; } };
+    return Cmd{ [] { return Message{ SetCursorVisibleMessage{ true } }; } };
 }
-inline cmd hide_cursor()
+inline Cmd hide_cursor()
 {
-    return cmd{ [] { return message{ set_cursor_visible_message{ false } }; } };
+    return Cmd{ [] { return Message{ SetCursorVisibleMessage{ false } }; } };
 }
-inline cmd enable_mouse()
+inline Cmd enable_mouse()
 {
-    return cmd{ [] { return message{ set_mouse_enabled_message{ true } }; } };
+    return Cmd{ [] { return Message{ SetMouseEnabledMessage{ true } }; } };
 }
-inline cmd disable_mouse()
+inline Cmd disable_mouse()
 {
-    return cmd{ [] { return message{ set_mouse_enabled_message{ false } }; } };
+    return Cmd{ [] { return Message{ SetMouseEnabledMessage{ false } }; } };
 }
 
 /// Emits `fn()` once after `delay`.
-template <typename Rep, typename Period, typename Fn>
-cmd tick(std::chrono::duration<Rep, Period> delay, Fn fn)
+template <class Rep, class Period, class Fn>
+Cmd tick(std::chrono::duration<Rep, Period> delay, Fn fn)
 {
-    return cmd{ [delay, fn = std::move(fn)]() -> message {
-        std::this_thread::sleep_for(delay);
-        return message{ fn() };
-    } };
+    return Cmd{ [delay, fn = std::move(fn)]() -> Message
+                {
+                    std::this_thread::sleep_for(delay);
+                    return Message{ fn() };
+                } };
 }
 
-/// Runs `fn` on a worker thread and delivers its result as a message.
-template <typename Fn>
-cmd perform(Fn fn)
+template <class Fn>
+Cmd perform(Fn fn)
 {
-    return cmd{ [fn = std::move(fn)]() -> message { return message{ fn() }; } };
+    return Cmd{ [fn = std::move(fn)]() -> Message { return Message{ fn() }; } };
 }
 
 }  // namespace teacup

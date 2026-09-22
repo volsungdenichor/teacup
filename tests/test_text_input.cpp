@@ -8,29 +8,29 @@ using namespace teacup;
 
 TEST_CASE("text input edits UTF-8 text and moves its cursor")
 {
-    widgets::text_input::state_type state{ "ab", 2 };
-    widgets::text_input::view_type view;
+    widgets::TextInput::State state{ "ab", 2 };
+    widgets::TextInput::View view;
 
-    CHECK(view.update(state, key_event{ key::left }));
+    CHECK(view.update(state, KeyEvent{ Key::left }));
     CHECK(state.cursor == 1);
-    CHECK(view.update(state, key_event{ key::character, "é" }));
+    CHECK(view.update(state, KeyEvent{ Key::character, "é" }));
     CHECK(state.value == "aéb");
-    CHECK(view.update(state, key_event{ key::space }));
+    CHECK(view.update(state, KeyEvent{ Key::space }));
     CHECK(state.value == "aé b");
-    CHECK(view.update(state, key_event{ key::backspace }));
+    CHECK(view.update(state, KeyEvent{ Key::backspace }));
     CHECK(state.value == "aéb");
-    CHECK(view.update(state, key_event{ key::del }));
+    CHECK(view.update(state, KeyEvent{ Key::del }));
     CHECK(state.value == "aé");
 }
 
 TEST_CASE("text input renders a horizontally clipped cursor")
 {
-    surface s{ size{ 5, 1 } };
+    Surface s{ Size{ 5, 1 } };
     s.clear();
-    canvas c{ s };
+    Canvas c{ s };
 
-    widgets::text_input::state_type state{ "abcdef", 6 };
-    widgets::text_input::view_type view;
+    widgets::TextInput::State state{ "abcdef", 6 };
+    widgets::TextInput::View view;
     view.render(state, c);
 
     CHECK(s.row_text(0) == "cdef ");
@@ -38,12 +38,12 @@ TEST_CASE("text input renders a horizontally clipped cursor")
 
 TEST_CASE("text input renders its current value")
 {
-    surface s{ size{ 12, 1 } };
+    Surface s{ Size{ 12, 1 } };
     s.clear();
-    canvas c{ s };
+    Canvas c{ s };
 
-    widgets::text_input::state_type state{ "edited", 6 };
-    widgets::text_input::view_type view;
+    widgets::TextInput::State state{ "edited", 6 };
+    widgets::TextInput::View view;
     view.render(state, c);
 
     CHECK(s.row_text(0) == "edited      ");

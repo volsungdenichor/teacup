@@ -18,9 +18,9 @@ namespace widgets
 {
 
 template <typename Item>
-struct list
+struct List
 {
-    struct state_type
+    struct State
     {
         std::vector<Item> items;
         int selected = 0;
@@ -37,18 +37,17 @@ struct list
         }
     };
 
-    /// View and interaction logic for an application-owned list state.
-    class view_type
+    class View
     {
     public:
-        using renderer_fn = std::function<void(const Item&, canvas, const style&, bool selected)>;
-        using view_renderer_fn = std::function<void(const state_type&, canvas)>;
+        using RendererFn = std::function<void(const Item&, Canvas, const Style&, bool selected)>;
+        using ViewRendererFn = std::function<void(const State&, Canvas)>;
 
-        view_type()
+        View()
         {
             if constexpr (std::is_same_v<Item, std::string>)
             {
-                renderer_ = [](const std::string& item, canvas row, const style& item_style, bool selected)
+                renderer_ = [](const std::string& item, Canvas row, const Style& item_style, bool selected)
                 {
                     std::string text = (selected ? "> " : "  ") + item;
                     while (static_cast<int>(utf8::width(text)) > row.width())
@@ -59,72 +58,72 @@ struct list
                     {
                         text.push_back(' ');
                     }
-                    row.text(point{ 0, 0 }, text, item_style);
+                    row.text(Point{ 0, 0 }, text, item_style);
                 };
             }
         }
 
-        view_type& selected_style(const style& value)
+        View& selected_style(const Style& value)
         {
             selected_style_ = value;
             return *this;
         }
-        view_type& item_style(const style& value)
+        View& item_style(const Style& value)
         {
             item_style_ = value;
             return *this;
         }
 
-        view_type& item_height(int value)
+        View& item_height(int value)
         {
             item_height_ = (std::max)(1, value);
             return *this;
         }
 
-        view_type& viewport_height(int value)
+        View& viewport_height(int value)
         {
             viewport_height_ = (std::max)(0, value);
             return *this;
         }
 
-        view_type& item_renderer(renderer_fn renderer)
+        View& item_renderer(RendererFn renderer)
         {
             renderer_ = std::move(renderer);
             return *this;
         }
 
-        view_type& renderer(view_renderer_fn renderer)
+        View& renderer(ViewRendererFn renderer)
         {
             view_renderer_ = std::move(renderer);
             return *this;
         }
 
-        bool update(state_type& state, const key_event& event) const
+        bool update(State& state, const KeyEvent& event) const
         {
             state.clamp_selection();
             if (state.items.empty())
             {
                 return false;
             }
-            if (event.code == key::up || event.matches("k"))
+            if (event.code == Key::up || event.matches("k"))
             {
                 state.selected = (std::max)(0, state.selected - 1);
                 keep_selected_visible(state);
                 return true;
             }
-            if (event.code == key::down || event.matches("j"))
+            if (event.code == Key::down || event.matches("j"))
             {
                 state.selected = (std::min)(static_cast<int>(state.items.size()) - 1, state.selected + 1);
                 keep_selected_visible(state);
                 return true;
             }
-            if (event.code == key::home)
+            if (event.code == Key::home)
             {
                 state.selected = 0;
                 keep_selected_visible(state);
                 return true;
             }
-            if (event.code == key::end)
+            if (event.code == Key::end)
             {
                 state.selected = static_cast<int>(state.items.size()) - 1;
                 keep_selected_visible(state);
@@ -133,7 +132,7 @@ struct list
             return false;
         }
 
-        void ensure_visible(state_type& state, int height) const
+        void ensure_visible(State& state, int height) const
         {
             const int visible_items = (std::max)(1, height / item_height_);
             state.clamp_selection();
@@ -149,36 +148,36 @@ struct list
             state.clamp_offset(visible_items);
         }
 
-        void page_down(state_type& state, int height) const
+        void page_down(State& state, int height) const
         {
             state.offset += (std::max)(1, height / item_height_);
             state.clamp_offset((std::max)(1, height / item_height_));
         }
 
-        void page_up(state_type& state, int height) const
+        void page_up(State& state, int height) const
         {
             state.offset -= (std::max)(1, height / item_height_);
             state.clamp_offset((std::max)(1, height / item_height_));
         }
 
-        bool update(state_type& state, const mouse_event& event, const rect& area) const
+        bool update(State& state, const MouseEvent& event, const Rect& area) const
         {
             if (!area.contains(event.position))
             {
                 return false;
             }
-            if (event.button == mouse_button::wheel_up)
+            if (event.button == MouseButton::wheel_up)
             {
                 state.offset = (std::max)(0, state.offset - 1);
                 return true;
             }
-            if (event.button == mouse_button::wheel_down)
+            if (event.button == MouseButton::wheel_down)
             {
                 state.offset = (std::min)(
                     state.offset + 1, (std::max)(0, static_cast<int>(state.items.size()) - area.height() / item_height_));
                 return true;
             }
-            if (event.action != mouse_action::press || event.button != mouse_button::left)
+            if (event.action != MouseAction::press || event.button != MouseButton::left)
             {
                 return false;
             }
@@ -191,7 +190,7 @@ struct list
             return true;
         }
 
-        void render(const state_type& state, canvas target) const
+        void render(const State& state, Canvas target) const
         {
             if (view_renderer_)
             {
@@ -220,19 +219,19 @@ struct list
                     break;
                 }
                 const bool active = item_index == selected;
-                const style& item_style = active ? selected_style_ : item_style_;
+                const Style& item_style = active ? selected_style_ : item_style_;
                 if (!renderer_)
                 {
                     continue;
                 }
-                const canvas row_canvas = target.sub(rect{ 0, row, target.width(), item_height_ });
-                target.fill(rect{ 0, row, target.width(), item_height_ }, " ", item_style);
+                const Canvas row_canvas = target.sub(Rect{ 0, row, target.width(), item_height_ });
+                target.fill(Rect{ 0, row, target.width(), item_height_ }, " ", item_style);
                 renderer_(state.items[static_cast<std::size_t>(item_index)], row_canvas, item_style, active);
             }
         }
 
     private:
-        void keep_selected_visible(state_type& state) const
+        void keep_selected_visible(State& state) const
         {
             if (viewport_height_ > 0)
             {
@@ -240,10 +239,10 @@ struct list
             }
         }
 
-        style selected_style_ = style{}.fg(color::hex("#f38ba8")).add(attr::bold);
-        style item_style_ = style{}.fg(color::hex("#cdd6f4"));
-        renderer_fn renderer_;
-        view_renderer_fn view_renderer_;
+        Style selected_style_ = Style{}.fg(Color::hex("#f38ba8")).add(Attr::bold);
+        Style item_style_ = Style{}.fg(Color::hex("#cdd6f4"));
+        RendererFn renderer_;
+        ViewRendererFn view_renderer_;
         int item_height_ = 1;
         int viewport_height_ = 0;
     };

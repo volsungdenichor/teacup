@@ -15,56 +15,53 @@ namespace teacup
 namespace widgets
 {
 
-struct tabs
+struct Tabs
 {
-    struct state_type
+    struct State
     {
         int selected = 0;
     };
 
-    /// View and interaction logic for an application-owned tabs_state.
-    /// Left/right cycle labels; `key::tab` is focus navigation owned by the
-    /// router and is intentionally not handled here.
-    class view_type
+    class View
     {
     public:
-        using renderer_fn = std::function<void(const state_type&, canvas)>;
+        using RendererFn = std::function<void(const State&, Canvas)>;
 
-        view_type& labels(std::vector<std::string> value)
+        View& labels(std::vector<std::string> value)
         {
             labels_ = std::move(value);
             return *this;
         }
-        view_type& tab_style(const teacup::style& value)
+        View& tab_style(const Style& value)
         {
             tab_style_ = value;
             return *this;
         }
-        view_type& selected_style(const teacup::style& value)
+        View& selected_style(const Style& value)
         {
             selected_style_ = value;
             return *this;
         }
 
-        view_type& renderer(renderer_fn value)
+        View& renderer(RendererFn value)
         {
             renderer_ = std::move(value);
             return *this;
         }
 
-        bool update(state_type& state, const key_event& event) const
+        bool update(State& state, const KeyEvent& event) const
         {
             if (labels_.empty())
             {
                 return false;
             }
             state.selected = std::clamp(state.selected, 0, static_cast<int>(labels_.size()) - 1);
-            if (event.code == key::left)
+            if (event.code == Key::left)
             {
                 state.selected = (state.selected + static_cast<int>(labels_.size()) - 1) % static_cast<int>(labels_.size());
                 return true;
             }
-            if (event.code == key::right)
+            if (event.code == Key::right)
             {
                 state.selected = (state.selected + 1) % static_cast<int>(labels_.size());
                 return true;
@@ -72,9 +69,9 @@ struct tabs
             return false;
         }
 
-        bool update(state_type& state, const mouse_event& event, const rect& area) const
+        bool update(State& state, const MouseEvent& event, const Rect& area) const
         {
-            if (event.action != mouse_action::press || event.button != mouse_button::left || !area.contains(event.position))
+            if (event.action != MouseAction::press || event.button != MouseButton::left || !area.contains(event.position))
             {
                 return false;
             }
@@ -94,7 +91,7 @@ struct tabs
             return false;
         }
 
-        void render(const state_type& state, canvas target) const
+        void render(const State& state, Canvas target) const
         {
             if (renderer_)
             {
@@ -113,16 +110,16 @@ struct tabs
                 const bool active = static_cast<int>(i) == selected;
                 const std::string text = active ? "[" + labels_[i] + "]" : " " + labels_[i] + " ";
                 const std::string clipped = text.substr(0, static_cast<std::size_t>(target.width() - x));
-                target.text(point{ x, 0 }, clipped, active ? selected_style_ : tab_style_);
+                target.text(Point{ x, 0 }, clipped, active ? selected_style_ : tab_style_);
                 x += static_cast<int>(clipped.size());
             }
         }
 
     private:
         std::vector<std::string> labels_;
-        teacup::style tab_style_;
-        teacup::style selected_style_ = teacup::style{}.bold().underline();
-        renderer_fn renderer_;
+        Style tab_style_;
+        Style selected_style_ = Style{}.bold().underline();
+        RendererFn renderer_;
     };
 };
 

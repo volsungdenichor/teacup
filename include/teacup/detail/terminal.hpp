@@ -12,13 +12,13 @@ namespace detail
 {
 
 /// Abstraction over the host terminal; the only platform dependent piece.
-class terminal
+class Terminal
 {
 public:
-    virtual ~terminal() = default;
+    virtual ~Terminal() = default;
 
     virtual bool is_tty() const = 0;
-    virtual teacup::size size() const = 0;
+    virtual Size size() const = 0;
 
     virtual void enter_raw_mode() = 0;
     virtual void leave_raw_mode() = 0;
@@ -37,7 +37,7 @@ public:
 };
 
 /// Creates the terminal implementation for the current platform.
-std::unique_ptr<terminal> make_terminal();
+std::unique_ptr<Terminal> make_terminal();
 
 }  // namespace detail
 }  // namespace teacup

@@ -11,30 +11,25 @@ namespace teacup
 namespace detail
 {
 
-/// Double-buffered renderer: diffs the new frame against the previous one and
-/// emits the minimal amount of cursor moves and SGR changes.
-class renderer
+class Renderer
 {
 public:
-    renderer(terminal& out, color_profile profile);
+    Renderer(Terminal& out, ColorProfile profile);
 
-    void set_profile(color_profile profile)
-    {
-        profile_ = profile;
-    }
+    void set_profile(ColorProfile profile) { profile_ = profile; }
 
     /// Forces a full repaint on the next `draw` (after resize or alt screen).
     void invalidate();
 
-    void draw(const surface& frame);
+    void draw(const Surface& frame);
 
     /// Builds the escape sequence for a frame without writing it (test hook).
-    [[nodiscard]] std::string build(const surface& frame);
+    [[nodiscard]] std::string build(const Surface& frame);
 
 private:
-    terminal& out_;
-    color_profile profile_;
-    surface previous_{};
+    Terminal& out_;
+    ColorProfile profile_;
+    Surface previous_{};
     bool full_repaint_ = true;
 };
 

@@ -6,7 +6,7 @@ namespace teacup
 {
 namespace detail
 {
-std::unique_ptr<terminal> make_terminal()
+std::unique_ptr<Terminal> make_terminal()
 {
     return nullptr;  // Windows VT backend: see docs/PLAN.md milestone M7.
 }
@@ -40,26 +40,16 @@ void on_sigwinch(int)
     g_resized.store(true, std::memory_order_relaxed);
 }
 
-class posix_terminal final : public terminal
+class PosixTerminal final : public Terminal
 {
 public:
-    posix_terminal()
-        : in_fd_{ ::isatty(STDIN_FILENO) ? STDIN_FILENO : -1 }
-        , out_fd_{ STDOUT_FILENO }
-    {
-    }
+    PosixTerminal() : in_fd_{ ::isatty(STDIN_FILENO) ? STDIN_FILENO : -1 }, out_fd_{ STDOUT_FILENO } { }
 
-    ~posix_terminal() override
-    {
-        leave_raw_mode();
-    }
+    ~PosixTerminal() override { leave_raw_mode(); }
 
-    bool is_tty() const override
-    {
-        return in_fd_ >= 0 && ::isatty(out_fd_) != 0;
-    }
+    bool is_tty() const override { return in_fd_ >= 0 && ::isatty(out_fd_) != 0; }
 
-    teacup::size size() const override
+    Size size() const override
     {
         winsize ws{};
         if (::ioctl(out_fd_, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0 && ws.ws_row > 0)
@@ -111,10 +101,7 @@ public:
         raw_ = false;
     }
 
-    void write(const std::string& data) override
-    {
-        buffer_ += data;
-    }
+    void write(const std::string& data) override { buffer_ += data; }
 
     void flush() override
     {
@@ -168,26 +155,16 @@ public:
         return std::string{ chunk, static_cast<std::size_t>(count) };
     }
 
-    void set_alt_screen(bool enabled) override
-    {
-        write(enabled ? "\x1b[?1049h" : "\x1b[?1049l");
-    }
+    void set_alt_screen(bool enabled) override { write(enabled ? "\x1b[?1049h" : "\x1b[?1049l"); }
 
-    void set_cursor_visible(bool visible) override
-    {
-        write(visible ? "\x1b[?25h" : "\x1b[?25l");
-    }
+    void set_cursor_visible(bool visible) override { write(visible ? "\x1b[?25h" : "\x1b[?25l"); }
 
     void set_mouse_enabled(bool enabled) override
     {
-        write(enabled ? "\x1b[?1000h\x1b[?1002h\x1b[?1006h"
-                      : "\x1b[?1006l\x1b[?1002l\x1b[?1000l");
+        write(enabled ? "\x1b[?1000h\x1b[?1002h\x1b[?1006h" : "\x1b[?1006l\x1b[?1002l\x1b[?1000l");
     }
 
-    void set_bracketed_paste(bool enabled) override
-    {
-        write(enabled ? "\x1b[?2004h" : "\x1b[?2004l");
-    }
+    void set_bracketed_paste(bool enabled) override { write(enabled ? "\x1b[?2004h" : "\x1b[?2004l"); }
 
 private:
     int in_fd_;
@@ -202,9 +179,9 @@ private:
 
 }  // namespace
 
-std::unique_ptr<terminal> make_terminal()
+std::unique_ptr<Terminal> make_terminal()
 {
-    return std::unique_ptr<terminal>{ new posix_terminal{} };
+    return std::make_unique<PosixTerminal>();
 }
 
 }  // namespace detail

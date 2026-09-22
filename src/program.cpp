@@ -18,10 +18,10 @@ namespace
 {
 
 /// Thread-safe mailbox shared with command workers.
-class mailbox
+class Mailbox
 {
 public:
-    void push(message msg)
+    void push(Message msg)
     {
         std::lock_guard<std::mutex> lock{ mutex_ };
         if (closed_)
@@ -31,7 +31,7 @@ public:
         queue_.push_back(std::move(msg));
     }
 
-    bool try_pop(message& out)
+    bool try_pop(Message& out)
     {
         std::lock_guard<std::mutex> lock{ mutex_ };
         if (queue_.empty())
@@ -52,12 +52,11 @@ public:
 
 private:
     std::mutex mutex_{};
-    std::deque<message> queue_{};
+    std::deque<Message> queue_{};
     bool closed_ = false;
 };
 
-void spawn(const cmd& command, const std::shared_ptr<mailbox>& box,
-           const std::shared_ptr<std::atomic<int>>& pending)
+void spawn(const Cmd& command, const std::shared_ptr<Mailbox>& box, const std::shared_ptr<std::atomic<int>>& pending)
 {
     for (const auto& fn : command.items())
     {
@@ -66,22 +65,24 @@ void spawn(const cmd& command, const std::shared_ptr<mailbox>& box,
             continue;
         }
         pending->fetch_add(1);
-        std::thread{ [fn, box, pending] {
-            message result = fn();
-            if (!result.empty())
+        std::thread{
+            [fn, box, pending]
             {
-                box->push(std::move(result));
+                Message result = fn();
+                if (!result.empty())
+                {
+                    box->push(std::move(result));
+                }
+                pending->fetch_sub(1);
             }
-            pending->fetch_sub(1);
-        } }.detach();
+        }.detach();
     }
 }
 
-/// Restores the terminal no matter how the loop is left.
 class terminal_guard
 {
 public:
-    terminal_guard(detail::terminal& term, const options& opts)
+    terminal_guard(detail::Terminal& term, const Options& opts)
         : term_{ term }
         , alt_screen_{ opts.alt_screen }
         , mouse_{ opts.mouse }
@@ -146,7 +147,7 @@ public:
     }
 
 private:
-    detail::terminal& term_;
+    detail::Terminal& term_;
     bool alt_screen_;
     bool mouse_;
     bool paste_;
@@ -154,73 +155,75 @@ private:
 
 }  // namespace
 
-cmd sequence(std::vector<cmd> cmds)
+Cmd sequence(std::vector<Cmd> cmds)
 {
-    return cmd{ [cmds = std::move(cmds)]() -> message {
-        for (const auto& c : cmds)
-        {
-            for (const auto& fn : c.items())
-            {
-                if (fn)
+    return Cmd{ [cmds = std::move(cmds)]() -> Message
                 {
-                    fn();
-                }
-            }
-        }
-        return message{};
-    } };
+                    for (const auto& c : cmds)
+                    {
+                        for (const auto& fn : c.items())
+                        {
+                            if (fn)
+                            {
+                                fn();
+                            }
+                        }
+                    }
+                    return Message{};
+                } };
 }
 
 namespace detail
 {
 
-int run_app(app_base& app, const options& opts)
+int run_app(AppBase& app, const Options& opts)
 {
-    std::unique_ptr<terminal> term = make_terminal();
+    std::unique_ptr<Terminal> term = make_terminal();
     if (!term)
     {
         return 1;
     }
 
     terminal_guard guard{ *term, opts };
-    renderer render{ *term, opts.profile };
-    input_decoder decoder;
+    Renderer render{ *term, opts.profile };
+    InputDecoder decoder;
 
-    auto box = std::make_shared<mailbox>();
+    auto box = std::make_shared<Mailbox>();
     auto pending = std::make_shared<std::atomic<int>>(0);
 
-    surface frame{ term->size() };
+    Surface frame{ term->size() };
     bool dirty = true;
     bool running = true;
 
-    const auto handle = [&](const message& msg) {
+    const auto handle = [&](const Message& msg)
+    {
         if (msg.empty())
         {
             return;
         }
-        if (msg.is<quit_message>())
+        if (msg.is<QuitMessage>())
         {
             running = false;
             return;
         }
-        if (const auto* alt = msg_cast<set_alt_screen_message>(msg))
+        if (const auto* alt = msg_cast<SetAltScreenMessage>(msg))
         {
             guard.set_alt_screen(alt->enabled);
             render.invalidate();
             dirty = true;
             return;
         }
-        if (const auto* cursor = msg_cast<set_cursor_visible_message>(msg))
+        if (const auto* cursor = msg_cast<SetCursorVisibleMessage>(msg))
         {
             term->set_cursor_visible(cursor->visible);
             return;
         }
-        if (const auto* mouse = msg_cast<set_mouse_enabled_message>(msg))
+        if (const auto* mouse = msg_cast<SetMouseEnabledMessage>(msg))
         {
             guard.set_mouse(mouse->enabled);
             return;
         }
-        if (const auto* resize = msg_cast<resize_event>(msg))
+        if (const auto* resize = msg_cast<ResizeEvent>(msg))
         {
             frame.resize(resize->size);
             render.invalidate();
@@ -229,7 +232,7 @@ int run_app(app_base& app, const options& opts)
         dirty = true;
     };
 
-    handle(message{ start_event{} });
+    handle(Message{ StartEvent{} });
     spawn(app.init(), box, pending);
 
     const int timeout_ms = static_cast<int>(opts.frame_interval.count());
@@ -241,11 +244,11 @@ int run_app(app_base& app, const options& opts)
 
         if (resized)
         {
-            handle(message{ resize_event{ term->size() } });
+            handle(Message{ ResizeEvent{ term->size() } });
         }
         if (!bytes.empty())
         {
-            for (const message& msg : decoder.feed(bytes))
+            for (const Message& msg : decoder.feed(bytes))
             {
                 handle(msg);
                 if (!running)
@@ -256,13 +259,13 @@ int run_app(app_base& app, const options& opts)
         }
         else
         {
-            for (const message& msg : decoder.flush())
+            for (const Message& msg : decoder.flush())
             {
                 handle(msg);
             }
         }
 
-        message async;
+        Message async;
         while (running && box->try_pop(async))
         {
             handle(async);
@@ -273,16 +276,16 @@ int run_app(app_base& app, const options& opts)
             break;
         }
 
-        const teacup::size current = term->size();
+        const Size current = term->size();
         if (current != frame.size())
         {
-            handle(message{ resize_event{ current } });
+            handle(Message{ ResizeEvent{ current } });
         }
 
         if (dirty)
         {
             frame.clear();
-            app.view(canvas{ frame });
+            app.view(Canvas{ frame });
             render.draw(frame);
             dirty = false;
         }

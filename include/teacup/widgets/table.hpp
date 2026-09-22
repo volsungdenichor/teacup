@@ -15,40 +15,39 @@ namespace teacup
 namespace widgets
 {
 
-/// A simple table of text rows with optional headers.
-class table
+class Table
 {
 public:
-    using renderer_fn = std::function<void(canvas)>;
+    using RendererFn = std::function<void(Canvas)>;
 
-    table() = default;
+    Table() = default;
 
-    table& headers(std::vector<std::string> value)
+    Table& headers(std::vector<std::string> value)
     {
         headers_ = std::move(value);
         return *this;
     }
-    table& rows(std::vector<std::vector<std::string>> value)
+    Table& rows(std::vector<std::vector<std::string>> value)
     {
         rows_ = std::move(value);
         return *this;
     }
-    table& header_style(const style& s)
+    Table& header_style(const Style& s)
     {
         header_style_ = s;
         return *this;
     }
-    table& row_style(const style& s)
+    Table& row_style(const Style& s)
     {
         row_style_ = s;
         return *this;
     }
-    table& renderer(renderer_fn value)
+    Table& renderer(RendererFn value)
     {
         renderer_ = std::move(value);
         return *this;
     }
-    void render(canvas target) const
+    void render(Canvas target) const
     {
         if (renderer_)
         {
@@ -77,7 +76,7 @@ public:
             {
                 line.push_back(' ');
             }
-            target.text(point{ 0, row_index }, line, header_style_);
+            target.text(Point{ 0, row_index }, line, header_style_);
             ++row_index;
         }
 
@@ -92,13 +91,13 @@ public:
             {
                 line.push_back(' ');
             }
-            target.text(point{ 0, row_index }, line, row_style_);
+            target.text(Point{ 0, row_index }, line, row_style_);
             ++row_index;
         }
 
         while (row_index < height)
         {
-            target.fill(rect{ point{ 0, row_index }, size{ width, 1 } }, " ");
+            target.fill(Rect{ Point{ 0, row_index }, Size{ width, 1 } }, " ");
             ++row_index;
         }
     }
@@ -168,9 +167,9 @@ private:
 
     std::vector<std::string> headers_;
     std::vector<std::vector<std::string>> rows_;
-    style header_style_ = style{}.fg(color::hex("#f38ba8")).add(attr::bold);
-    style row_style_ = style{}.fg(color::hex("#cdd6f4"));
-    renderer_fn renderer_;
+    Style header_style_ = Style{}.fg(Color::hex("#f38ba8")).add(Attr::bold);
+    Style row_style_ = Style{}.fg(Color::hex("#cdd6f4"));
+    RendererFn renderer_;
 };
 
 }  // namespace widgets

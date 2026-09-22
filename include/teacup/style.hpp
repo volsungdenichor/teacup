@@ -9,7 +9,7 @@
 namespace teacup
 {
 
-enum class attr : std::uint16_t
+enum class Attr : std::uint16_t
 {
     none = 0,
     bold = 1u << 0,
@@ -21,115 +21,74 @@ enum class attr : std::uint16_t
     strikethrough = 1u << 6
 };
 
-constexpr attr operator|(attr l, attr r)
+constexpr Attr operator|(Attr lhs, Attr rhs)
 {
-    return static_cast<attr>(static_cast<std::uint16_t>(l) | static_cast<std::uint16_t>(r));
+    return static_cast<Attr>(static_cast<std::uint16_t>(lhs) | static_cast<std::uint16_t>(rhs));
 }
-constexpr attr operator&(attr l, attr r)
+constexpr Attr operator&(Attr lhs, Attr rhs)
 {
-    return static_cast<attr>(static_cast<std::uint16_t>(l) & static_cast<std::uint16_t>(r));
+    return static_cast<Attr>(static_cast<std::uint16_t>(lhs) & static_cast<std::uint16_t>(rhs));
 }
-constexpr bool has(attr set, attr flag)
+constexpr bool has(Attr set, Attr flag)
 {
-    return (set & flag) == flag && flag != attr::none;
+    return (set & flag) == flag && flag != Attr::none;
 }
 
-/// Cell-level appearance: foreground, background and text attributes.
-class style
+class Style
 {
 public:
-    constexpr style() = default;
+    constexpr Style() = default;
 
-    style& fg(const color& c) &
+    Style& fg(const Color& c) &
     {
         fg_ = c;
         return *this;
     }
-    style&& fg(const color& c) &&
+    Style&& fg(const Color& c) &&
     {
         fg_ = c;
         return std::move(*this);
     }
-    style& bg(const color& c) &
+    Style& bg(const Color& c) &
     {
         bg_ = c;
         return *this;
     }
-    style&& bg(const color& c) &&
+    Style&& bg(const Color& c) &&
     {
         bg_ = c;
         return std::move(*this);
     }
 
-    style& add(attr a) &
+    Style& add(Attr a) &
     {
         attrs_ = attrs_ | a;
         return *this;
     }
-    style&& add(attr a) &&
+    Style&& add(Attr a) &&
     {
         attrs_ = attrs_ | a;
         return std::move(*this);
     }
 
-    style& bold() &
-    {
-        return add(attr::bold);
-    }
-    style&& bold() &&
-    {
-        return std::move(add(attr::bold));
-    }
-    style& dim() &
-    {
-        return add(attr::dim);
-    }
-    style&& dim() &&
-    {
-        return std::move(add(attr::dim));
-    }
-    style& italic() &
-    {
-        return add(attr::italic);
-    }
-    style&& italic() &&
-    {
-        return std::move(add(attr::italic));
-    }
-    style& underline() &
-    {
-        return add(attr::underline);
-    }
-    style&& underline() &&
-    {
-        return std::move(add(attr::underline));
-    }
-    style& reverse() &
-    {
-        return add(attr::reverse);
-    }
-    style&& reverse() &&
-    {
-        return std::move(add(attr::reverse));
-    }
+    Style& bold() & { return add(Attr::bold); }
+    Style&& bold() && { return std::move(add(Attr::bold)); }
+    Style& dim() & { return add(Attr::dim); }
+    Style&& dim() && { return std::move(add(Attr::dim)); }
+    Style& italic() & { return add(Attr::italic); }
+    Style&& italic() && { return std::move(add(Attr::italic)); }
+    Style& underline() & { return add(Attr::underline); }
+    Style&& underline() && { return std::move(add(Attr::underline)); }
+    Style& reverse() & { return add(Attr::reverse); }
+    Style&& reverse() && { return std::move(add(Attr::reverse)); }
 
-    [[nodiscard]] const color& foreground() const
-    {
-        return fg_;
-    }
-    [[nodiscard]] const color& background() const
-    {
-        return bg_;
-    }
-    [[nodiscard]] attr attributes() const
-    {
-        return attrs_;
-    }
+    [[nodiscard]] const Color& foreground() const { return fg_; }
+    [[nodiscard]] const Color& background() const { return bg_; }
+    [[nodiscard]] Attr attributes() const { return attrs_; }
 
-    /// Overlays `other` on top of `*this`: set colors and attributes win.
-    [[nodiscard]] style merged(const style& other) const
+    [[nodiscard]] Style merged(const Style& other) const
     {
-        style result = *this;
+        Style result = *this;
         if (other.fg_.is_set())
         {
             result.fg_ = other.fg_;
@@ -142,27 +101,21 @@ public:
         return result;
     }
 
-    friend style operator|(const style& l, const style& r)
-    {
-        return l.merged(r);
-    }
+    friend Style operator|(const Style& lhs, const Style& rhs) { return lhs.merged(rhs); }
 
-    friend bool operator==(const style& l, const style& r)
+    friend bool operator==(const Style& lhs, const Style& rhs)
     {
-        return l.fg_ == r.fg_ && l.bg_ == r.bg_ && l.attrs_ == r.attrs_;
+        return lhs.fg_ == rhs.fg_ && lhs.bg_ == rhs.bg_ && lhs.attrs_ == rhs.attrs_;
     }
-    friend bool operator!=(const style& l, const style& r)
-    {
-        return !(l == r);
-    }
+    friend bool operator!=(const Style& lhs, const Style& rhs) { return !(lhs == rhs); }
 
 private:
-    color fg_{};
-    color bg_{};
-    attr attrs_ = attr::none;
+    Color fg_{};
+    Color bg_{};
+    Attr attrs_ = Attr::none;
 };
 
 /// Full SGR sequence (including ESC[ ... m) that resets and applies `s`.
-std::string sgr_sequence(const style& s, color_profile profile);
+std::string sgr_sequence(const Style& s, ColorProfile profile);
 
 }  // namespace teacup

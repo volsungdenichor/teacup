@@ -7,24 +7,18 @@
 namespace teacup
 {
 
-/// A type-erased, copyable value passed to `update`.
-class message
+class Message
 {
 public:
-    message() = default;
+    Message() = default;
 
-    template <
-        typename T,
-        typename = std::enable_if_t<!std::is_same<std::decay_t<T>, message>::value>>
-    message(T&& value)  // NOLINT(google-explicit-constructor): implicit is the point
+    template <typename T, typename = std::enable_if_t<!std::is_same<std::decay_t<T>, Message>::value>>
+    Message(T&& value)  // NOLINT(google-explicit-constructor): implicit is the point
         : value_{ std::forward<T>(value) }
     {
     }
 
-    [[nodiscard]] bool empty() const
-    {
-        return !value_.has_value();
-    }
+    [[nodiscard]] bool empty() const { return !value_.has_value(); }
 
     template <typename T>
     [[nodiscard]] bool is() const
@@ -44,7 +38,7 @@ private:
 
 /// Returns a pointer to the payload if `msg` holds a `T`, otherwise nullptr.
 template <typename T>
-const T* msg_cast(const message& msg)
+const T* msg_cast(const Message& msg)
 {
     return msg.template get<T>();
 }

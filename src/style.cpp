@@ -3,44 +3,45 @@
 namespace teacup
 {
 
-std::string sgr_sequence(const style& s, color_profile profile)
+std::string sgr_sequence(const Style& s, ColorProfile profile)
 {
     std::string out = "\x1b[0";
-    const auto append = [&out](const std::string& code) {
+    const auto append = [&out](const std::string& code)
+    {
         out += ';';
         out += code;
     };
 
-    const attr a = s.attributes();
-    if (has(a, attr::bold))
+    const Attr a = s.attributes();
+    if (has(a, Attr::bold))
     {
         append("1");
     }
-    if (has(a, attr::dim))
+    if (has(a, Attr::dim))
     {
         append("2");
     }
-    if (has(a, attr::italic))
+    if (has(a, Attr::italic))
     {
         append("3");
     }
-    if (has(a, attr::underline))
+    if (has(a, Attr::underline))
     {
         append("4");
     }
-    if (has(a, attr::blink))
+    if (has(a, Attr::blink))
     {
         append("5");
     }
-    if (has(a, attr::reverse))
+    if (has(a, Attr::reverse))
     {
         append("7");
     }
-    if (has(a, attr::strikethrough))
+    if (has(a, Attr::strikethrough))
     {
         append("9");
     }
-    if (profile != color_profile::no_color)
+    if (profile != ColorProfile::no_color)
     {
         if (s.foreground().is_set())
         {

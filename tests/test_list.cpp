@@ -7,12 +7,12 @@ using namespace teacup;
 
 TEST_CASE("list widget renders a selected item")
 {
-    surface s{ size{ 12, 3 } };
+    Surface s{ Size{ 12, 3 } };
     s.clear();
-    canvas c{ s };
+    Canvas c{ s };
 
-    widgets::list<std::string>::state_type state{ { "alpha", "beta", "gamma" }, 1 };
-    widgets::list<std::string>::view_type view;
+    widgets::List<std::string>::State state{ { "alpha", "beta", "gamma" }, 1 };
+    widgets::List<std::string>::View view;
     view.render(state, c);
 
     CHECK(s.row_text(0) == "  alpha     ");
@@ -22,13 +22,13 @@ TEST_CASE("list widget renders a selected item")
 
 TEST_CASE("list widget changes selection from key events")
 {
-    widgets::list<std::string>::state_type state{ { "alpha", "beta", "gamma" }, 0 };
-    widgets::list<std::string>::view_type view;
+    widgets::List<std::string>::State state{ { "alpha", "beta", "gamma" }, 0 };
+    widgets::List<std::string>::View view;
 
-    CHECK(view.update(state, key_event{ key::down }));
+    CHECK(view.update(state, KeyEvent{ Key::down }));
     CHECK(state.selected == 1);
-    CHECK(view.update(state, key_event{ key::character, "k" }));
+    CHECK(view.update(state, KeyEvent{ Key::character, "k" }));
     CHECK(state.selected == 0);
-    CHECK(view.update(state, key_event{ key::end }));
+    CHECK(view.update(state, KeyEvent{ Key::end }));
     CHECK(state.selected == 2);
 }

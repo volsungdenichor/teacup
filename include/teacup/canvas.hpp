@@ -8,39 +8,39 @@ namespace teacup
 
 {
 
-class canvas
+class Canvas
 {
 public:
-    canvas() = default;
-    canvas(surface& target, rect area);
+    Canvas() = default;
+    Canvas(Surface& target, Rect area);
 
-    explicit canvas(surface& target) : canvas{ target, target.bounds() } { }
+    explicit Canvas(Surface& target) : Canvas{ target, target.bounds() } { }
 
-    [[nodiscard]] teacup::size size() const { return area_.size(); }
+    [[nodiscard]] Size size() const { return area_.size(); }
     [[nodiscard]] int width() const { return size().width; }
     [[nodiscard]] int height() const { return size().height; }
-    [[nodiscard]] rect bounds() const { return rect::from_size(size()); }
+    [[nodiscard]] Rect bounds() const { return Rect::from_size(size()); }
     [[nodiscard]] bool valid() const { return target_ != nullptr && !area_.empty(); }
 
-    [[nodiscard]] canvas sub(const rect& area) const;
+    [[nodiscard]] Canvas sub(const Rect& area) const;
 
-    void put(const point& p, const cell& c);
+    void put(const Point& p, const Cell& c);
 
-    void style_at(const point& p, const style& s);
+    void style_at(const Point& p, const Style& s);
 
-    int text(const point& p, const std::string& value, const style& s = {});
+    int text(const Point& p, const std::string& value, const Style& s = {});
 
-    int text_aligned(int y, const std::string& value, align a, const style& s = {});
+    int text_aligned(int y, const std::string& value, Align a, const Style& s = {});
 
-    void fill(const rect& area, const std::string& glyph = " ", const style& s = {});
-    void fill(const std::string& glyph = " ", const style& s = {}) { fill(bounds(), glyph, s); }
+    void fill(const Rect& area, const std::string& glyph = " ", const Style& s = {});
+    void fill(const std::string& glyph = " ", const Style& s = {}) { fill(bounds(), glyph, s); }
 
-    void horizontal_line(const point& p, int length, const std::string& glyph, const style& s = {});
-    void vertical_line(const point& p, int length, const std::string& glyph, const style& s = {});
+    void horizontal_line(const Point& p, int length, const std::string& glyph, const Style& s = {});
+    void vertical_line(const Point& p, int length, const std::string& glyph, const Style& s = {});
 
 private:
-    surface* target_ = nullptr;
-    rect area_{};
+    Surface* target_ = nullptr;
+    Rect area_{};
 };
 
 }  // namespace teacup

@@ -33,22 +33,19 @@ std::string country_name(Country country)
 struct model
 {
     int tick = 0;
-    teacup::size screen_size{ 80, 24 };
-    teacup::router events;  // owns the focus ring; survives model copies
+    teacup::Size screen_size{ 80, 24 };
+    teacup::Router events;  // owns the focus ring; survives model copies
     std::string last_key = "-";
     std::string last_mouse = "-";
-    teacup::widgets::list<std::string>::state_type menu;
-    teacup::widgets::tabs::state_type tabs;
-    teacup::widgets::text_input::state_type input;
-    teacup::widgets::viewport::state_type viewport;
-    teacup::widgets::spinner::state_type spinner;
-    teacup::widgets::list<Player>::state_type players;
+    teacup::widgets::List<std::string>::State menu;
+    teacup::widgets::Tabs::State tabs;
+    teacup::widgets::TextInput::State input;
+    teacup::widgets::Viewport::State viewport;
+    teacup::widgets::Spinner::State spinner;
+    teacup::widgets::List<Player>::State players;
 };
 
-/// The single source of truth for widget placement, shared by `update`
-/// (hit-testing) and `view` (painting) so the two can never drift apart.
-/// The inset nodes mirror each block's border + padding.
-teacup::layout::node showcase_tree()
+teacup::layout::Node showcase_tree()
 {
     using namespace teacup::layout;
     return column({
@@ -99,46 +96,43 @@ teacup::layout::node showcase_tree()
     });
 }
 
-void render_player(const Player& player, teacup::canvas row, const teacup::style&, bool selected)
+void render_player(const Player& player, teacup::Canvas row, const teacup::Style&, bool selected)
 {
     using namespace teacup;
-    widgets::text{ player.name }
-        .style(style{}.fg(selected ? palette::accent() : palette::text()).bold())
-        .render(row.sub(rect{ 0, 0, row.width(), 1 }));
-    widgets::text{ "Country: " + country_name(player.country) }
-        .style(style{}.fg(palette::subtle()))
-        .render(row.sub(rect{ 0, 1, row.width(), 1 }));
+    widgets::Text{ player.name }
+        .style(Style{}.fg(selected ? palette::accent() : palette::text()).bold())
+        .render(row.sub(Rect{ 0, 0, row.width(), 1 }));
+    widgets::Text{ "Country: " + country_name(player.country) }
+        .style(Style{}.fg(palette::subtle()))
+        .render(row.sub(Rect{ 0, 1, row.width(), 1 }));
 
-    widgets::text{ "Living:" }.style(style{}.fg(palette::subtle())).render(row.sub(rect{ 0, 2, 8, 1 }));
-    widgets::checkbox::view_type{}
-        .checked_style(style{}.fg(palette::success()).bold())
-        .unchecked_style(style{}.fg(palette::danger()))
-        .render(widgets::checkbox::state_type{ player.living }, row.sub(rect{ 8, 2, row.width() - 8, 1 }));
+    widgets::Text{ "Living:" }.style(Style{}.fg(palette::subtle())).render(row.sub(Rect{ 0, 2, 8, 1 }));
+    widgets::Checkbox::View{}
+        .checked_style(Style{}.fg(palette::success()).bold())
+        .unchecked_style(Style{}.fg(palette::danger()))
+        .render(widgets::Checkbox::State{ player.living }, row.sub(Rect{ 8, 2, row.width() - 8, 1 }));
 }
 
-teacup::cmd tick()
+teacup::Cmd tick()
 {
     return teacup::tick(std::chrono::milliseconds{ 180 }, [] { return tick_message{}; });
 }
 
-teacup::cmd init(const model&)
+teacup::Cmd init(const model&)
 {
     return tick();
 }
 
-teacup::update_result<model> update(model m, const teacup::message& message)
+teacup::UpdateResult<model> update(model m, const teacup::Message& message)
 {
-    const teacup::widgets::list<std::string>::view_type menu_view;
-    teacup::widgets::tabs::view_type tabs_view;
-    const teacup::widgets::text_input::view_type input_view;
-    const teacup::widgets::viewport::view_type viewport_view;
-    teacup::widgets::list<Player>::view_type players_view;
-    const teacup::layout::areas areas = teacup::layout::resolve(showcase_tree(), teacup::rect::from_size(m.screen_size));
+    const teacup::widgets::List<std::string>::View menu_view;
+    teacup::widgets::Tabs::View tabs_view;
+    const teacup::widgets::TextInput::View input_view;
+    const teacup::widgets::Viewport::View viewport_view;
+    teacup::widgets::List<Player>::View players_view;
+    const teacup::layout::Areas areas = teacup::layout::resolve(showcase_tree(), teacup::Rect::from_size(m.screen_size));
     players_view.item_height(3).viewport_height(areas.get("players").height());
 
-    // Focus is authoritative; the menu selection mirrors it so the hub
-    // highlights the active widget. Enter on the hub activates (focuses) the
-    // selected widget; enter on a widget backs out to the hub.
     const auto sync_menu_to_focus = [&]
     {
         const std::string& f = m.events.focus().focused();
@@ -163,7 +157,7 @@ teacup::update_result<model> update(model m, const teacup::message& message)
         m.events.focus().set("menu");
     }
 
-    if (const auto* mouse = teacup::msg_cast<teacup::mouse_event>(message))
+    if (const auto* mouse = teacup::msg_cast<teacup::MouseEvent>(message))
     {
         m.last_mouse = std::to_string(mouse->position.x) + "," + std::to_string(mouse->position.y);
         m.events.route(message, areas);
@@ -172,7 +166,7 @@ teacup::update_result<model> update(model m, const teacup::message& message)
             activate_menu();  // clicking a menu row jumps focus to it
         }
         viewport_view.update(m.viewport, *mouse, areas.get("players"));
-        if (mouse->action == teacup::mouse_action::press && mouse->button == teacup::mouse_button::left)
+        if (mouse->action == teacup::MouseAction::press && mouse->button == teacup::MouseButton::left)
         {
             if (const std::string* target = areas.hit(mouse->position); target != nullptr && *target == "players")
             {
@@ -188,7 +182,7 @@ teacup::update_result<model> update(model m, const teacup::message& message)
         return teacup::next(m);
     }
 
-    if (const auto* resize = teacup::msg_cast<teacup::resize_event>(message))
+    if (const auto* resize = teacup::msg_cast<teacup::ResizeEvent>(message))
     {
         m.screen_size = resize->size;
         return teacup::next(m);
@@ -201,7 +195,7 @@ teacup::update_result<model> update(model m, const teacup::message& message)
         return teacup::next(m, tick());
     }
 
-    if (const auto* paste = teacup::msg_cast<teacup::paste_event>(message))
+    if (const auto* paste = teacup::msg_cast<teacup::PasteEvent>(message))
     {
         if (m.events.focus().is("input"))
         {
@@ -211,7 +205,7 @@ teacup::update_result<model> update(model m, const teacup::message& message)
         return teacup::next(m);
     }
 
-    if (const auto* key = teacup::msg_cast<teacup::key_event>(message))
+    if (const auto* key = teacup::msg_cast<teacup::KeyEvent>(message))
     {
         m.last_key = key->name();
         if (key->matches("ctrl+c"))
@@ -222,11 +216,8 @@ teacup::update_result<model> update(model m, const teacup::message& message)
         const std::string was_focused = m.events.focus().focused();
         const bool consumed = m.events.route(message, areas);
 
-        if (key->code == teacup::key::enter)
+        if (key->code == teacup::Key::enter)
         {
-            // Enter on the hub activates the selection; enter on a focused
-            // widget backs out to the hub, leaving the selection on the
-            // widget just left so it is easy to re-enter.
             if (was_focused == "menu")
             {
                 activate_menu();
@@ -239,16 +230,19 @@ teacup::update_result<model> update(model m, const teacup::message& message)
             return teacup::next(m);
         }
 
-        // Page keys scroll the demo viewport regardless of focus.
-        if (key->code == teacup::key::page_up)
+        if (key->code == teacup::Key::page_up)
         {
             if (was_focused == "players")
+            {
                 players_view.page_up(m.players, areas.get("players").height());
+            }
             else
+            {
                 viewport_view.page_up(m.viewport, 4);
+            }
             return teacup::next(m);
         }
-        if (key->code == teacup::key::page_down)
+        if (key->code == teacup::Key::page_down)
         {
             if (was_focused == "players")
                 players_view.page_down(m.players, areas.get("players").height());
@@ -257,10 +251,9 @@ teacup::update_result<model> update(model m, const teacup::message& message)
             return teacup::next(m);
         }
 
-        // Typing while the menu hub points at "text input" starts editing.
         if (!consumed && m.events.focus().is("menu") && m.menu.selected == 1
-            && (key->code == teacup::key::character || key->code == teacup::key::space || key->code == teacup::key::backspace
-                || key->code == teacup::key::del || key->code == teacup::key::home || key->code == teacup::key::end))
+            && (key->code == teacup::Key::character || key->code == teacup::Key::space || key->code == teacup::Key::backspace
+                || key->code == teacup::Key::del || key->code == teacup::Key::home || key->code == teacup::Key::end))
         {
             m.events.focus().set("input");
             sync_menu_to_focus();
@@ -271,28 +264,28 @@ teacup::update_result<model> update(model m, const teacup::message& message)
     return teacup::next(m);
 }
 
-void view(const model& m, teacup::canvas screen)
+void view(const model& m, teacup::Canvas screen)
 {
     using namespace teacup;
 
-    screen.fill(" ", style{}.bg(palette::surface()));
-    const layout::areas areas = layout::resolve(showcase_tree(), screen.bounds());
+    screen.fill(" ", Style{}.bg(palette::surface()));
+    const layout::Areas areas = layout::resolve(showcase_tree(), screen.bounds());
 
-    widgets::block{}
-        .border(border::rounded())
-        .border_style(style{}.fg(palette::accent()))
+    widgets::Block{}
+        .border(Border::rounded())
+        .border_style(Style{}.fg(palette::accent()))
         .title(" teacup widget gallery ")
-        .title_style(style{}.fg(palette::accent()).bold())
-        .title_align(align::center)
+        .title_style(Style{}.fg(palette::accent()).bold())
+        .title_align(Align::center)
         .padding(1)
         .render(
             screen.sub(areas.get("header")),
-            [&](canvas)
+            [&](Canvas)
             {
-                widgets::text{ "A small, living tour of the teacup toolkit" }
-                    .style(style{}.fg(palette::text()).bold())
+                widgets::Text{ "A small, living tour of the teacup toolkit" }
+                    .style(Style{}.fg(palette::text()).bold())
                     .render(screen.sub(areas.get("title")));
-                widgets::spinner::view_type{}
+                widgets::Spinner::View{}
                     .frames({ "⠋ live",
                               "⠙ live",
                               "⠹ live",
@@ -303,90 +296,90 @@ void view(const model& m, teacup::canvas screen)
                               "⠧ live",
                               "⠇ live",
                               "⠏ live" })
-                    .style(style{}.fg(palette::accent()))
+                    .style(Style{}.fg(palette::accent()))
                     .render(m.spinner, screen.sub(areas.get("spinner")));
-                widgets::tabs::view_type{}
+                widgets::Tabs::View{}
                     .labels({ "gallery", "layout", "events" })
-                    .tab_style(style{}.fg(palette::subtle()))
-                    .selected_style(style{}.fg(palette::text()).bg(palette::accent()).bold())
+                    .tab_style(Style{}.fg(palette::subtle()))
+                    .selected_style(Style{}.fg(palette::text()).bg(palette::accent()).bold())
                     .render(m.tabs, screen.sub(areas.get("tabs")));
             });
 
-    widgets::block{}
-        .border(border::rounded())
-        .border_style(style{}.fg(palette::subtle()))
+    widgets::Block{}
+        .border(Border::rounded())
+        .border_style(Style{}.fg(palette::subtle()))
         .title(" navigation · players offset: " + std::to_string(m.players.offset) + " ")
-        .title_style(style{}.fg(palette::subtle()))
+        .title_style(Style{}.fg(palette::subtle()))
         .padding(1)
         .render(
             screen.sub(areas.get("navigation")),
-            [&](canvas)
+            [&](Canvas)
             {
-                widgets::list<std::string>::view_type{}
+                widgets::List<std::string>::View{}
                     .selected_style(
-                        !m.events.focus().is("menu") ? style{}.fg(palette::accent()).bold()
-                                                     : style{}.fg(palette::surface()).bg(palette::accent()).bold())
-                    .item_style(style{}.fg(palette::text()))
+                        !m.events.focus().is("menu") ? Style{}.fg(palette::accent()).bold()
+                                                     : Style{}.fg(palette::surface()).bg(palette::accent()).bold())
+                    .item_style(Style{}.fg(palette::text()))
                     .render(m.menu, screen.sub(areas.get("menu")));
 
-                widgets::list<Player>::view_type{}
+                widgets::List<Player>::View{}
                     .item_height(3)
-                    .selected_style(style{}.bg(color::hex("#313244")))
-                    .item_style(style{}.fg(palette::text()))
+                    .selected_style(Style{}.bg(Color::hex("#313244")))
+                    .item_style(Style{}.fg(palette::text()))
                     .item_renderer(render_player)
                     .render(m.players, screen.sub(areas.get("players")));
             });
 
-    widgets::block{}
-        .border(border::rounded())
-        .border_style(style{}.fg(palette::subtle()))
+    widgets::Block{}
+        .border(Border::rounded())
+        .border_style(Style{}.fg(palette::subtle()))
         .title(" components ")
-        .title_style(style{}.fg(palette::subtle()))
+        .title_style(Style{}.fg(palette::subtle()))
         .padding(1)
         .render(
             screen.sub(areas.get("components")),
-            [&](canvas)
+            [&](Canvas)
             {
-                widgets::progress::view_type{}
-                    .gradient(palette::accent(), color::hex("#43bf6d"))
-                    .render(widgets::progress::state_type{ (m.tick % 100) / 99.0 }, screen.sub(areas.get("progress")));
+                widgets::Progress::View{}
+                    .gradient(palette::accent(), Color::hex("#43bf6d"))
+                    .render(widgets::Progress::State{ (m.tick % 100) / 99.0 }, screen.sub(areas.get("progress")));
 
-                widgets::table{}
+                widgets::Table{}
                     .headers({ "widget", "state" })
                     .rows({ { "list", "ready" }, { "viewport", "scrolling" }, { "tabs", "selectable" } })
-                    .header_style(style{}.fg(palette::accent()).bold())
-                    .row_style(style{}.fg(palette::text()))
+                    .header_style(Style{}.fg(palette::accent()).bold())
+                    .row_style(Style{}.fg(palette::text()))
                     .render(screen.sub(areas.get("table")));
 
-                widgets::block{}
-                    .border(border::plain())
-                    .border_style(style{}.fg(palette::subtle()))
+                widgets::Block{}
+                    .border(Border::plain())
+                    .border_style(Style{}.fg(palette::subtle()))
                     .title(m.events.focus().is("input") ? " edit me [active] " : " edit me ")
-                    .title_style(style{}.fg(m.events.focus().is("input") ? palette::accent() : palette::subtle()))
+                    .title_style(Style{}.fg(m.events.focus().is("input") ? palette::accent() : palette::subtle()))
                     .padding(0)
                     .render(
                         screen.sub(areas.get("input-box")),
-                        [&](canvas)
+                        [&](Canvas)
                         {
-                            const canvas input_area = screen.sub(areas.get("input"));
-                            widgets::text_input::view_type{}
-                                .text_style(style{}.fg(palette::text()))
+                            const Canvas input_area = screen.sub(areas.get("input"));
+                            widgets::TextInput::View{}
+                                .text_style(Style{}.fg(palette::text()))
                                 .cursor_style(
-                                    m.events.focus().is("input") ? style{}.fg(palette::surface()).bg(palette::accent())
-                                                                 : style{}.fg(palette::subtle()).bg(palette::surface()))
-                                .render(m.input, input_area.sub(rect{ 0, 0, input_area.width(), 1 }));
-                            widgets::text{ "> " + m.input.value }
-                                .style(style{}.fg(palette::subtle()))
-                                .render(input_area.sub(rect{ 0, 1, input_area.width(), 1 }));
-                            widgets::text{ "mouse: " + m.last_mouse }
-                                .style(style{}.fg(palette::subtle()))
-                                .render(input_area.sub(rect{ 0, 2, input_area.width(), 1 }));
+                                    m.events.focus().is("input") ? Style{}.fg(palette::surface()).bg(palette::accent())
+                                                                 : Style{}.fg(palette::subtle()).bg(palette::surface()))
+                                .render(m.input, input_area.sub(Rect{ 0, 0, input_area.width(), 1 }));
+                            widgets::Text{ "> " + m.input.value }
+                                .style(Style{}.fg(palette::subtle()))
+                                .render(input_area.sub(Rect{ 0, 1, input_area.width(), 1 }));
+                            widgets::Text{ "mouse: " + m.last_mouse }
+                                .style(Style{}.fg(palette::subtle()))
+                                .render(input_area.sub(Rect{ 0, 2, input_area.width(), 1 }));
                         });
             });
 
-    widgets::text{ "arrows select · enter activate · tab/shift+tab focus · ctrl+c quit" }
-        .style(style{}.fg(palette::surface()).bg(palette::accent()))
-        .align(align::center)
+    widgets::Text{ "arrows select · enter activate · tab/shift+tab focus · ctrl+c quit" }
+        .style(Style{}.fg(palette::surface()).bg(palette::accent()))
+        .align(Align::center)
         .render(screen.sub(areas.get("footer")));
 }
 
@@ -408,7 +401,7 @@ int main()
         { "Name: Deadmeat", Country::usa, false },
     };
 
-    teacup::options options;
+    teacup::Options options;
     options.alt_screen = true;
     options.mouse = true;
     return teacup::run(teacup::make_app(initial, init, update, view), options);

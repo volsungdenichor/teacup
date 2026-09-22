@@ -7,12 +7,12 @@ using namespace teacup;
 
 TEST_CASE("viewport renders a clipped window and scrolls by pages")
 {
-    surface s{ size{ 10, 3 } };
+    Surface s{ Size{ 10, 3 } };
     s.clear();
-    canvas c{ s };
+    Canvas c{ s };
 
-    widgets::viewport::state_type state{ { "zero", "one", "two", "three", "four" }, 0 };
-    widgets::viewport::view_type view;
+    widgets::Viewport::State state{ { "zero", "one", "two", "three", "four" }, 0 };
+    widgets::Viewport::View view;
     view.render(state, c);
 
     CHECK(s.row_text(0) == "zero      ");

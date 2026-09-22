@@ -30,20 +30,20 @@ TEST_CASE("wrap_text honours explicit newlines")
 
 TEST_CASE("text widget aligns content")
 {
-    surface s{ size{ 7, 1 } };
+    Surface s{ Size{ 7, 1 } };
     s.clear();
-    canvas c{ s };
-    widgets::text{ "ab" }.align(align::center).render(c);
+    Canvas c{ s };
+    widgets::Text{ "ab" }.align(Align::center).render(c);
 
     CHECK(s.row_text(0) == "  ab   ");
 }
 
 TEST_CASE("text widget wraps and vertically aligns")
 {
-    surface s{ size{ 5, 3 } };
+    Surface s{ Size{ 5, 3 } };
     s.clear();
-    canvas c{ s };
-    widgets::text{ "aa bb" }.wrap(true).vertical_align(align::end).render(c);
+    Canvas c{ s };
+    widgets::Text{ "aa bb" }.wrap(true).vertical_align(Align::end).render(c);
 
     CHECK(s.row_text(0) == "     ");
     CHECK(s.row_text(2) == "aa bb");

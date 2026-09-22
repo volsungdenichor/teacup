@@ -5,7 +5,7 @@
 namespace teacup
 {
 
-struct border
+struct Border
 {
     std::string top = "─";
     std::string bottom = "─";
@@ -16,11 +16,11 @@ struct border
     std::string bottom_left = "└";
     std::string bottom_right = "┘";
 
-    static border plain() { return {}; }
+    static Border plain() { return {}; }
 
-    static border rounded()
+    static Border rounded()
     {
-        border b;
+        Border b;
         b.top_left = "╭";
         b.top_right = "╮";
         b.bottom_left = "╰";
@@ -28,13 +28,13 @@ struct border
         return b;
     }
 
-    static border thick() { return { "━", "━", "┃", "┃", "┏", "┓", "┗", "┛" }; }
+    static Border thick() { return { "━", "━", "┃", "┃", "┏", "┓", "┗", "┛" }; }
 
-    static border double_line() { return { "═", "═", "║", "║", "╔", "╗", "╚", "╝" }; }
+    static Border double_line() { return { "═", "═", "║", "║", "╔", "╗", "╚", "╝" }; }
 
-    static border ascii() { return { "-", "-", "|", "|", "+", "+", "+", "+" }; }
+    static Border ascii() { return { "-", "-", "|", "|", "+", "+", "+", "+" }; }
 
-    static border blank() { return { " ", " ", " ", " ", " ", " ", " ", " " }; }
+    static Border blank() { return { " ", " ", " ", " ", " ", " ", " ", " " }; }
 };
 
 }  // namespace teacup

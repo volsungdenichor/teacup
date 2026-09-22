@@ -10,7 +10,7 @@ using namespace teacup;
 namespace
 {
 
-layout::node two_pane_tree()
+layout::Node two_pane_tree()
 {
     using namespace layout;
     return row({
@@ -26,7 +26,7 @@ layout::node two_pane_tree()
 
 TEST_CASE("focus ring cycles through its order")
 {
-    focus_ring focus{ { "tabs", "menu", "input" } };
+    FocusRing focus{ { "tabs", "menu", "input" } };
 
     CHECK(focus.focused() == "tabs");
     focus.advance();
@@ -44,81 +44,80 @@ TEST_CASE("focus ring cycles through its order")
 
 TEST_CASE("router delivers keys only to the focused widget")
 {
-    widgets::list<std::string>::state_type menu{ { "a", "b" }, 0 };
-    widgets::text_input::state_type input{ "x", 1 };
+    widgets::List<std::string>::State menu{ { "a", "b" }, 0 };
+    widgets::TextInput::State input{ "x", 1 };
 
-    router events;
-    events.add("menu", route_keys(menu, widgets::list<std::string>::view_type{}));
-    events.add("input", route_keys(input, widgets::text_input::view_type{}));
+    Router events;
+    events.add("menu", route_keys(menu, widgets::List<std::string>::View{}));
+    events.add("input", route_keys(input, widgets::TextInput::View{}));
     events.focus_order({ "menu", "input" });
-    const areas layout = layout::resolve(two_pane_tree(), rect{ 0, 0, 20, 10 });
+    const Areas layout = layout::resolve(two_pane_tree(), Rect{ 0, 0, 20, 10 });
 
-    REQUIRE(events.route(message{ key_event{ key::down } }, layout));
-    CHECK(menu.selected == 1);   // menu is focused, list ate the key
+    REQUIRE(events.route(Message{ KeyEvent{ Key::down } }, layout));
+    CHECK(menu.selected == 1);  // menu is focused, list ate the key
     CHECK(input.value == "x");
 
     events.focus().set("input");
-    REQUIRE(events.route(message{ key_event{ key::left } }, layout));
-    CHECK(menu.selected == 1);   // menu no longer sees keys
-    CHECK(input.cursor == 0);    // text_input moved the cursor
+    REQUIRE(events.route(Message{ KeyEvent{ Key ::left } }, layout));
+    CHECK(menu.selected == 1);  // menu no longer sees keys
+    CHECK(input.cursor == 0);   // text_input moved the cursor
 }
 
 TEST_CASE("router cycles focus with tab and shift+tab")
 {
-    widgets::text_input::state_type input{ "", 0 };
+    widgets::TextInput::State input{ "", 0 };
 
-    router events;
-    events.add("input", route_keys(input, widgets::text_input::view_type{}));
+    Router events;
+    events.add("input", route_keys(input, widgets::TextInput::View{}));
     events.focus_order({ "tabs", "menu", "input" });
-    const areas layout = layout::resolve(two_pane_tree(), rect{ 0, 0, 20, 10 });
+    const Areas layout = layout::resolve(two_pane_tree(), Rect{ 0, 0, 20, 10 });
 
-    REQUIRE(events.route(message{ key_event{ key::tab } }, layout));
+    REQUIRE(events.route(Message{ KeyEvent{ Key::tab } }, layout));
     CHECK(events.focus().focused() == "menu");
-    REQUIRE(events.route(
-        message{ key_event{ key::tab, "", modifier::shift } }, layout));
+    REQUIRE(events.route(Message{ KeyEvent{ Key::tab, "", Modifier::shift } }, layout));
     CHECK(events.focus().focused() == "tabs");
 }
 
 TEST_CASE("mouse press focuses the hit area and routes the event")
 {
-    widgets::list<std::string>::state_type menu{ { "a", "b", "c" }, 0 };
+    widgets::List<std::string>::State menu{ { "a", "b", "c" }, 0 };
 
-    router events;
-    events.add("left", route_mouse(menu, widgets::list<std::string>::view_type{}, "left"));
+    Router events;
+    events.add("left", route_mouse(menu, widgets::List<std::string>::View{}, "left"));
     events.focus_order({ "left" });  // the ring only lists bound widgets
-    const areas layout = layout::resolve(two_pane_tree(), rect{ 0, 0, 20, 10 });
+    const Areas layout = layout::resolve(two_pane_tree(), Rect{ 0, 0, 20, 10 });
 
     // A click on the "left" leaf focuses and routes to the bound list.
-    const mouse_event click{ point{ 3, 2 }, mouse_button::left, mouse_action::press };
-    REQUIRE(events.route(message{ click }, layout));
+    const MouseEvent click{ Point{ 3, 2 }, MouseButton::left, MouseAction::press };
+    REQUIRE(events.route(Message{ click }, layout));
     CHECK(events.focus().focused() == "left");
     CHECK(menu.selected == 2);
 
     // A click in an area with no bound handler keeps the current focus.
-    const mouse_event click_right{ point{ 15, 9 }, mouse_button::left, mouse_action::press };
-    CHECK_FALSE(events.route(message{ click_right }, layout));
+    const MouseEvent click_right{ Point{ 15, 9 }, MouseButton::left, MouseAction::press };
+    CHECK_FALSE(events.route(Message{ click_right }, layout));
     CHECK(events.focus().focused() == "left");
 }
 
 TEST_CASE("mouse focus walks up to the nearest focusable ancestor")
 {
-    widgets::list<std::string>::state_type menu{ { "a", "b" }, 0 };
+    widgets::List<std::string>::State menu{ { "a", "b" }, 0 };
 
-    router events;
+    Router events;
     // Bound under the container id; the layout names the inner leaf.
-    events.add("menu", route_mouse(menu, widgets::list<std::string>::view_type{}, "items"));
+    events.add("menu", route_mouse(menu, widgets::List<std::string>::View{}, "items"));
     events.focus_order({ "menu" });
-    const areas layout = layout::resolve(
-        layout::named("menu", layout::inset(1, layout::leaf("items"))), rect{ 0, 0, 10, 5 });
+    const Areas layout
+        = layout::resolve(layout::named("menu", layout::inset(1, layout::leaf("items"))), Rect{ 0, 0, 10, 5 });
 
     // "items" has no handler; its named ancestor "menu" does.
-    events.route(message{ mouse_event{ point{ 2, 2 }, mouse_button::left, mouse_action::press } }, layout);
+    events.route(Message{ MouseEvent{ Point{ 2, 2 }, MouseButton::left, MouseAction::press } }, layout);
     CHECK(events.focus().focused() == "menu");
 }
 
 TEST_CASE("focus ring with no ids stays unfocused")
 {
-    focus_ring focus;
+    FocusRing focus;
 
     CHECK(focus.focused().empty());
     focus.advance();
@@ -128,85 +127,85 @@ TEST_CASE("focus ring with no ids stays unfocused")
 
 TEST_CASE("tab always cycles focus and is never dispatched to widgets")
 {
-    widgets::tabs::state_type tabs;
-    widgets::list<std::string>::state_type menu{ { "a", "b" }, 0 };
+    widgets::Tabs::State tabs;
+    widgets::List<std::string>::State menu{ { "a", "b" }, 0 };
 
-    router events;
-    events.add("tabs", route_keys(tabs, widgets::tabs::view_type{}.labels({ "x", "y", "z" })));
-    events.add("menu", route_keys(menu, widgets::list<std::string>::view_type{}));
+    Router events;
+    events.add("tabs", route_keys(tabs, widgets::Tabs::View{}.labels({ "x", "y", "z" })));
+    events.add("menu", route_keys(menu, widgets::List<std::string>::View{}));
     events.focus_order({ "tabs", "menu" });
-    const areas layout = layout::resolve(two_pane_tree(), rect{ 0, 0, 20, 10 });
+    const Areas layout = layout::resolve(two_pane_tree(), Rect{ 0, 0, 20, 10 });
 
     // tabs would accept tab to cycle labels, but the router keeps it.
-    REQUIRE(events.route(message{ key_event{ key::tab } }, layout));
+    REQUIRE(events.route(Message{ KeyEvent{ Key::tab } }, layout));
     CHECK(events.focus().focused() == "menu");
     CHECK(tabs.selected == 0);  // unchanged: the key never reached the widget
 
-    REQUIRE(events.route(message{ key_event{ key::tab } }, layout));
+    REQUIRE(events.route(Message{ KeyEvent{ Key::tab } }, layout));
     CHECK(events.focus().focused() == "tabs");
 }
 
 TEST_CASE("a hub widget can hand focus off and take it back")
 {
-    widgets::list<std::string>::state_type menu{ { "overview", "editor" }, 0 };
-    widgets::text_input::state_type input{ "", 0 };
+    widgets::List<std::string>::State menu{ { "overview", "editor" }, 0 };
+    widgets::TextInput::State input{ "", 0 };
 
-    router events;
+    Router events;
     // Menu arrows move only the selection; focus changes on enter.
-    events.add("menu", route_keys(menu, widgets::list<std::string>::view_type{}));
-    events.add("editor", route_keys(input, widgets::text_input::view_type{}));
+    events.add("menu", route_keys(menu, widgets::List<std::string>::View{}));
+    events.add("editor", route_keys(input, widgets::TextInput::View{}));
     events.focus_order({ "menu", "editor" });
-    const areas layout = layout::resolve(two_pane_tree(), rect{ 0, 0, 20, 10 });
+    const Areas layout = layout::resolve(two_pane_tree(), Rect{ 0, 0, 20, 10 });
 
-    REQUIRE(events.route(message{ key_event{ key::down } }, layout));
+    REQUIRE(events.route(Message{ KeyEvent{ Key::down } }, layout));
     CHECK(menu.selected == 1);
     CHECK(events.focus().focused() == "menu");  // selection moved, focus did not
 
     // App policy: enter activates the selection.
     if (menu.selected == 1)
         events.focus().set("editor");
-    REQUIRE(events.route(message{ key_event{ key::character, "a" } }, layout));
+    REQUIRE(events.route(Message{ KeyEvent{ Key::character, "a" } }, layout));
     CHECK(input.value == "a");
 
     // App policy: enter backs out to the hub.
     events.focus().set("menu");
-    REQUIRE(events.route(message{ key_event{ key::up } }, layout));
+    REQUIRE(events.route(Message{ KeyEvent{ Key::up } }, layout));
     CHECK(menu.selected == 0);
 }
 
 TEST_CASE("a focused list navigates while the hub selection mirrors focus")
 {
     // Mirrors the showcase: a menu hub + a players list, focus authoritative.
-    widgets::list<std::string>::state_type menu{ { "overview", "editor", "players" }, 0 };
-    widgets::list<std::string>::state_type players{ { "a", "b", "c", "d" }, 0 };
+    widgets::List<std::string>::State menu{ { "overview", "editor", "players" }, 0 };
+    widgets::List<std::string>::State players{ { "a", "b", "c", "d" }, 0 };
 
-    router events;
-    events.add("menu", route_keys(menu, widgets::list<std::string>::view_type{}));
-    events.add("players", route_keys(players, widgets::list<std::string>::view_type{}));
-    const areas layout = layout::resolve(
+    Router events;
+    events.add("menu", route_keys(menu, widgets::List<std::string>::View{}));
+    events.add("players", route_keys(players, widgets::List<std::string>::View{}));
+    const Areas layout = layout::resolve(
         layout::column({
             layout::fixed(4, layout::focusable("menu")),
             layout::flex(layout::focusable("players")),
         }),
-        rect{ 0, 0, 20, 12 });
+        Rect{ 0, 0, 20, 12 });
 
     auto activate_menu = [&] {
         events.focus().set(menu.selected == 1 ? "editor" : menu.selected == 2 ? "players" : "menu");
     };
 
     // Hub: arrow to "players", enter activates.
-    events.route(message{ key_event{ key::none } }, layout);  // adopt focus order
-    events.route(message{ key_event{ key::down } }, layout);
-    events.route(message{ key_event{ key::down } }, layout);
+    events.route(Message{ KeyEvent{ Key::none } }, layout);  // adopt focus order
+    events.route(Message{ KeyEvent{ Key::down } }, layout);
+    events.route(Message{ KeyEvent{ Key::down } }, layout);
     CHECK(menu.selected == 2);
     activate_menu();
     CHECK(events.focus().focused() == "players");
 
     // Now arrows must reach the players list.
-    events.route(message{ key_event{ key::down } }, layout);
-    events.route(message{ key_event{ key::down } }, layout);
+    events.route(Message{ KeyEvent{ Key::down } }, layout);
+    events.route(Message{ KeyEvent{ Key::down } }, layout);
     CHECK(players.selected == 2);
-    events.route(message{ key_event{ key::up } }, layout);
+    events.route(Message{ KeyEvent{ Key::up } }, layout);
     CHECK(players.selected == 1);
 
     // Enter backs out; the hub selection mirrors the widget we came from.
@@ -217,48 +216,48 @@ TEST_CASE("a focused list navigates while the hub selection mirrors focus")
 
 TEST_CASE("router adopts the layout-declared focus order")
 {
-    widgets::text_input::state_type input{ "x", 1 };
+    widgets::TextInput::State input{ "x", 1 };
 
-    router events;
-    events.add("bottom", route_keys(input, widgets::text_input::view_type{}));
+    Router events;
+    events.add("bottom", route_keys(input, widgets::TextInput::View{}));
     // No focus_order() call: the tree declares the tab stops, adopted lazily.
-    const areas layout = layout::resolve(
+    const Areas layout = layout::resolve(
         layout::row({
             layout::fixed(10, layout::focusable("left")),
             layout::flex(layout::focusable("bottom")),
         }),
-        rect{ 0, 0, 20, 10 });
+        Rect{ 0, 0, 20, 10 });
 
-    REQUIRE(events.route(message{ key_event{ key::tab } }, layout));  // adopts + advances
+    REQUIRE(events.route(Message{ KeyEvent{ Key::tab } }, layout));  // adopts + advances
     CHECK(events.focus().focused() == "bottom");
-    REQUIRE(events.route(message{ key_event{ key::left } }, layout));
+    REQUIRE(events.route(Message{ KeyEvent{ Key::left } }, layout));
     CHECK(input.cursor == 0);
 }
 
 TEST_CASE("disabled entries are skipped and cannot take focus")
 {
-    widget_traits traits;
+    WidgetTraits traits;
     traits.enabled([](const std::string& id) { return id != "menu"; });
 
-    focus_ring focus{ { "tabs", "menu", "input" } };
+    FocusRing focus{ { "tabs", "menu", "input" } };
     focus.traits(traits);
 
     CHECK(focus.focused() == "tabs");
     focus.advance();
     CHECK(focus.focused() == "input");  // menu skipped
     focus.advance(-1);
-    CHECK(focus.focused() == "tabs");   // and skipped backwards
+    CHECK(focus.focused() == "tabs");  // and skipped backwards
 
-    CHECK_FALSE(focus.set("menu"));     // disabled ids reject focus
+    CHECK_FALSE(focus.set("menu"));  // disabled ids reject focus
     CHECK(focus.focused() == "tabs");
 }
 
 TEST_CASE("when nothing is focusable the ring reports no focus")
 {
-    widget_traits traits;
+    WidgetTraits traits;
     traits.enabled([](const std::string&) { return false; });
 
-    focus_ring focus{ { "a", "b" } };
+    FocusRing focus{ { "a", "b" } };
     focus.traits(traits);
 
     CHECK(focus.focused().empty());
@@ -269,10 +268,10 @@ TEST_CASE("when nothing is focusable the ring reports no focus")
 
 TEST_CASE("focusable-only filtering keeps events but drops tab stops")
 {
-    widget_traits traits;
+    WidgetTraits traits;
     traits.focusable([](const std::string& id) { return id != "status"; });
 
-    focus_ring focus{ { "input", "status" } };
+    FocusRing focus{ { "input", "status" } };
     focus.traits(traits);
 
     focus.advance();
@@ -282,15 +281,14 @@ TEST_CASE("focusable-only filtering keeps events but drops tab stops")
 
 TEST_CASE("disabled widgets receive no events through route helpers")
 {
-    widgets::list<std::string>::state_type menu{ { "a", "b" }, 0 };
+    widgets::List<std::string>::State menu{ { "a", "b" }, 0 };
 
-    router events;
-    events.add("left", route_keys(menu, widgets::list<std::string>::view_type{}, false));
-    events.add("left", route_mouse(menu, widgets::list<std::string>::view_type{}, "left", false));
-    const areas layout = layout::resolve(two_pane_tree(), rect{ 0, 0, 20, 10 });
+    Router events;
+    events.add("left", route_keys(menu, widgets::List<std::string>::View{}, false));
+    events.add("left", route_mouse(menu, widgets::List<std::string>::View{}, "left", false));
+    const Areas layout = layout::resolve(two_pane_tree(), Rect{ 0, 0, 20, 10 });
 
-    CHECK_FALSE(events.route(message{ key_event{ key::down } }, layout));
-    CHECK_FALSE(events.route(
-        message{ mouse_event{ point{ 3, 1 }, mouse_button::left, mouse_action::press } }, layout));
+    CHECK_FALSE(events.route(Message{ KeyEvent{ Key::down } }, layout));
+    CHECK_FALSE(events.route(Message{ MouseEvent{ Point{ 3, 1 }, MouseButton::left, MouseAction::press } }, layout));
     CHECK(menu.selected == 0);  // untouched
 }

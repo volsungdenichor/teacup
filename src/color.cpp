@@ -63,8 +63,7 @@ std::uint8_t rgb_to_ansi256(std::uint8_t r, std::uint8_t g, std::uint8_t b)
         }
         return static_cast<std::uint8_t>(232 + ((static_cast<int>(r) - 8) * 24) / 247);
     }
-    return static_cast<std::uint8_t>(
-        16 + 36 * cube_component(r) + 6 * cube_component(g) + cube_component(b));
+    return static_cast<std::uint8_t>(16 + 36 * cube_component(r) + 6 * cube_component(g) + cube_component(b));
 }
 
 std::uint8_t rgb_to_ansi16(std::uint8_t r, std::uint8_t g, std::uint8_t b)
@@ -92,8 +91,7 @@ std::uint8_t ansi256_to_ansi16(std::uint8_t index)
     }
     static const int levels[] = { 0, 95, 135, 175, 215, 255 };
     const int n = index - 16;
-    return rgb_to_ansi16(
-        to_u8(levels[n / 36]), to_u8(levels[(n / 6) % 6]), to_u8(levels[n % 6]));
+    return rgb_to_ansi16(to_u8(levels[n / 36]), to_u8(levels[(n / 6) % 6]), to_u8(levels[n % 6]));
 }
 
 bool env_contains(const char* name, const char* needle)
@@ -104,7 +102,7 @@ bool env_contains(const char* name, const char* needle)
 
 }  // namespace
 
-color color::hex(const std::string& text)
+Color Color::hex(const std::string& text)
 {
     std::string body = text;
     if (!body.empty() && body.front() == '#')
@@ -132,42 +130,35 @@ color color::hex(const std::string& text)
                 return {};
             }
         }
-        return rgb(
-            to_u8(c[0] * 16 + c[1]), to_u8(c[2] * 16 + c[3]), to_u8(c[4] * 16 + c[5]));
+        return rgb(to_u8(c[0] * 16 + c[1]), to_u8(c[2] * 16 + c[3]), to_u8(c[4] * 16 + c[5]));
     }
     return {};
 }
 
-color color::mix(const color& from, const color& to, double t)
+Color Color::mix(const Color& from, const Color& to, double t)
 {
-    if (from.type() != kind::rgb || to.type() != kind::rgb)
+    if (from.type() != Kind::rgb || to.type() != Kind::rgb)
     {
         return t < 0.5 ? from : to;
     }
     const double f = std::clamp(t, 0.0, 1.0);
-    const auto lerp = [&](std::uint8_t a, std::uint8_t b) {
-        return to_u8(static_cast<int>(std::lround(a + (b - a) * f)));
-    };
-    return rgb(
-        lerp(from.red(), to.red()),
-        lerp(from.green(), to.green()),
-        lerp(from.blue(), to.blue()));
+    const auto lerp = [&](std::uint8_t a, std::uint8_t b) { return to_u8(static_cast<int>(std::lround(a + (b - a) * f))); };
+    return rgb(lerp(from.red(), to.red()), lerp(from.green(), to.green()), lerp(from.blue(), to.blue()));
 }
 
-color color::adapt(color_profile profile) const
+Color Color::adapt(ColorProfile profile) const
 {
     switch (profile)
     {
-        case color_profile::no_color: return {};
-        case color_profile::truecolor: return *this;
-        case color_profile::ansi256:
-            return kind_ == kind::rgb ? indexed(rgb_to_ansi256(r_, g_, b_)) : *this;
-        case color_profile::ansi16:
-            if (kind_ == kind::rgb)
+        case ColorProfile::no_color: return {};
+        case ColorProfile::truecolor: return *this;
+        case ColorProfile::ansi256: return kind_ == Kind::rgb ? indexed(rgb_to_ansi256(r_, g_, b_)) : *this;
+        case ColorProfile::ansi16:
+            if (kind_ == Kind::rgb)
             {
                 return indexed(rgb_to_ansi16(r_, g_, b_));
             }
-            if (kind_ == kind::indexed)
+            if (kind_ == Kind::indexed)
             {
                 return indexed(ansi256_to_ansi16(r_));
             }
@@ -176,49 +167,47 @@ color color::adapt(color_profile profile) const
     return *this;
 }
 
-std::string color::sgr(bool foreground, color_profile profile) const
+std::string Color::sgr(bool foreground, ColorProfile profile) const
 {
-    const color c = adapt(profile);
+    const Color c = adapt(profile);
     if (!c.is_set())
     {
         return foreground ? "39" : "49";
     }
-    if (c.type() == kind::rgb)
+    if (c.type() == Kind::rgb)
     {
-        return (foreground ? std::string{ "38;2;" } : std::string{ "48;2;" })
-            + std::to_string(c.red()) + ";" + std::to_string(c.green()) + ";"
-            + std::to_string(c.blue());
+        return (foreground ? std::string{ "38;2;" } : std::string{ "48;2;" }) + std::to_string(c.red()) + ";"
+               + std::to_string(c.green()) + ";" + std::to_string(c.blue());
     }
     const int idx = c.index();
-    if (profile == color_profile::ansi16 && idx < 16)
+    if (profile == ColorProfile::ansi16 && idx < 16)
     {
         const int base = idx < 8 ? (foreground ? 30 : 40) : (foreground ? 90 : 100);
         return std::to_string(base + (idx % 8));
     }
-    return (foreground ? std::string{ "38;5;" } : std::string{ "48;5;" })
-        + std::to_string(idx);
+    return (foreground ? std::string{ "38;5;" } : std::string{ "48;5;" }) + std::to_string(idx);
 }
 
-color_profile detect_color_profile()
+ColorProfile detect_color_profile()
 {
     if (std::getenv("NO_COLOR") != nullptr)
     {
-        return color_profile::no_color;
+        return ColorProfile::no_color;
     }
     if (env_contains("COLORTERM", "truecolor") || env_contains("COLORTERM", "24bit"))
     {
-        return color_profile::truecolor;
+        return ColorProfile::truecolor;
     }
     if (env_contains("TERM", "256color"))
     {
-        return color_profile::ansi256;
+        return ColorProfile::ansi256;
     }
     const char* term = std::getenv("TERM");
     if (term == nullptr || std::strcmp(term, "dumb") == 0)
     {
-        return color_profile::no_color;
+        return ColorProfile::no_color;
     }
-    return color_profile::ansi16;
+    return ColorProfile::ansi16;
 }
 
 }  // namespace teacup

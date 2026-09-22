@@ -18,55 +18,49 @@ namespace widgets
 std::vector<std::string> wrap_text(const std::string& text, int width);
 
 /// A block of styled, optionally wrapped and aligned text.
-class text
+class Text
 {
 public:
-    using renderer_fn = std::function<void(canvas)>;
+    using RendererFn = std::function<void(Canvas)>;
 
-    text() = default;
-    explicit text(std::string content)
-        : content_{ std::move(content) }
-    {
-    }
+    Text() = default;
+    explicit Text(std::string content) : content_{ std::move(content) } { }
 
-    text& content(std::string value)
+    Text& content(std::string value)
     {
         content_ = std::move(value);
         return *this;
     }
-    text& style(const teacup::style& s)
+    Text& style(const Style& s)
     {
         style_ = s;
         return *this;
     }
-    text& align(teacup::align a)
+    Text& align(Align a)
     {
         align_ = a;
         return *this;
     }
-    text& vertical_align(teacup::align a)
+    Text& vertical_align(Align a)
     {
         valign_ = a;
         return *this;
     }
-    text& wrap(bool enabled)
+    Text& wrap(bool enabled)
     {
         wrap_ = enabled;
         return *this;
     }
 
-    text& renderer(renderer_fn value)
+    Text& renderer(RendererFn value)
     {
         renderer_ = std::move(value);
         return *this;
     }
     /// Number of rows the text needs at the given width.
-    [[nodiscard]] int height_for(int width) const
-    {
-        return static_cast<int>(lines(width).size());
-    }
+    [[nodiscard]] int height_for(int width) const { return static_cast<int>(lines(width).size()); }
 
-    void render(canvas target) const
+    void render(Canvas target) const
     {
         if (renderer_)
         {
@@ -78,8 +72,7 @@ public:
             return;
         }
         const std::vector<std::string> rows = lines(target.width());
-        const int offset = align_offset(
-            valign_, target.height(), static_cast<int>(rows.size()));
+        const int offset = align_offset(valign_, target.height(), static_cast<int>(rows.size()));
         for (std::size_t i = 0; i < rows.size(); ++i)
         {
             const int y = offset + static_cast<int>(i);
@@ -102,11 +95,11 @@ private:
     }
 
     std::string content_{};
-    teacup::style style_{};
-    teacup::align align_ = teacup::align::start;
-    teacup::align valign_ = teacup::align::start;
+    Style style_{};
+    Align align_ = Align::start;
+    Align valign_ = Align::start;
     bool wrap_ = true;
-    renderer_fn renderer_;
+    RendererFn renderer_;
 };
 
 }  // namespace widgets

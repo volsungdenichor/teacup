@@ -8,10 +8,10 @@ using namespace teacup;
 
 TEST_CASE("spinner advances through custom frames")
 {
-    surface s{ size{ 4, 1 } };
-    canvas c{ s };
-    widgets::spinner::state_type state{};
-    widgets::spinner::view_type view;
+    Surface s{ Size{ 4, 1 } };
+    Canvas c{ s };
+    widgets::Spinner::State state{};
+    widgets::Spinner::View view;
     view.frames({ ".", "o", "O" });
     state.frame = 1;
     view.render(state, c);
@@ -23,16 +23,16 @@ TEST_CASE("spinner advances through custom frames")
 
 TEST_CASE("tabs navigate and render labels")
 {
-    surface s{ size{ 16, 1 } };
-    canvas c{ s };
-    widgets::tabs::state_type state{};
-    widgets::tabs::view_type view;
+    Surface s{ Size{ 16, 1 } };
+    Canvas c{ s };
+    widgets::Tabs::State state{};
+    widgets::Tabs::View view;
     view.labels({ "one", "two", "three" });
     state.selected = 1;
     view.render(state, c);
     CHECK(s.row_text(0) == " one [two] three");
-    CHECK(view.update(state, key_event{ key::right }));
+    CHECK(view.update(state, KeyEvent{ Key::right }));
     CHECK(state.selected == 2);
-    CHECK(view.update(state, key_event{ key::right }));
+    CHECK(view.update(state, KeyEvent{ Key::right }));
     CHECK(state.selected == 0);
 }

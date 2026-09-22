@@ -12,47 +12,44 @@ namespace teacup
 namespace widgets
 {
 
-/// Application-owned progress state.
-
-struct progress
+struct Progress
 {
-    struct state_type
+    struct State
     {
         double ratio = 0.0;
 
         void clamp() { ratio = std::clamp(ratio, 0.0, 1.0); }
     };
 
-    /// Rendering configuration and view for an application-owned progress_state.
-    class view_type
+    class View
     {
     public:
-        using renderer_fn = std::function<void(const state_type&, canvas)>;
+        using RendererFn = std::function<void(const State&, Canvas)>;
 
-        view_type& gradient(const color& from, const color& to)
+        View& gradient(const Color& from, const Color& to)
         {
             from_ = from;
             to_ = to;
             return *this;
         }
-        view_type& track_style(const style& s)
+        View& track_style(const Style& s)
         {
             track_style_ = s;
             return *this;
         }
-        view_type& glyphs(std::string filled, std::string empty)
+        View& glyphs(std::string filled, std::string empty)
         {
             filled_ = std::move(filled);
             empty_ = std::move(empty);
             return *this;
         }
-        view_type& renderer(renderer_fn value)
+        View& renderer(RendererFn value)
         {
             renderer_ = std::move(value);
             return *this;
         }
 
-        void render(const state_type& state, canvas target, int y = 0) const
+        void render(const State& state, Canvas target, int y = 0) const
         {
             if (renderer_)
             {
@@ -71,23 +68,23 @@ struct progress
                 if (x < filled)
                 {
                     const double t = width > 1 ? static_cast<double>(x) / (width - 1) : 0.0;
-                    const style s = style{}.fg(color::mix(from_, to_, t));
-                    target.put(point{ x, y }, cell{ filled_, s, 1 });
+                    const Style s = Style{}.fg(Color::mix(from_, to_, t));
+                    target.put(Point{ x, y }, Cell{ filled_, s, 1 });
                 }
                 else
                 {
-                    target.put(point{ x, y }, cell{ empty_, track_style_, 1 });
+                    target.put(Point{ x, y }, Cell{ empty_, track_style_, 1 });
                 }
             }
         }
 
     private:
-        color from_ = color::hex("#7d56f4");
-        color to_ = color::hex("#f38ba8");
-        style track_style_ = style{}.fg(color::hex("#45475a"));
+        Color from_ = Color::hex("#7d56f4");
+        Color to_ = Color::hex("#f38ba8");
+        Style track_style_ = Style{}.fg(Color::hex("#45475a"));
         std::string filled_ = "█";
         std::string empty_ = "░";
-        renderer_fn renderer_;
+        RendererFn renderer_;
     };
 };
 
