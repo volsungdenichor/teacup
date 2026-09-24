@@ -13,6 +13,10 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     set(TEACUP_IS_TOP_LEVEL ON)
 endif()
 
+if(TEACUP_IS_TOP_LEVEL)
+    set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+endif()
+
 option(TEACUP_BUILD_EXAMPLES "Build teacup example applications" ${TEACUP_IS_TOP_LEVEL})
 option(TEACUP_BUILD_TESTS "Build teacup unit tests" ${TEACUP_IS_TOP_LEVEL})
 option(TEACUP_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
