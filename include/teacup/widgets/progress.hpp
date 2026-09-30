@@ -59,7 +59,7 @@ struct Progress
                 renderer_(state, target);
                 return;
             }
-            const int width = target.width();
+            const int width = target.size().width;
             if (width <= 0)
             {
                 return;

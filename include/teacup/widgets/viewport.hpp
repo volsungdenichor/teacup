@@ -78,14 +78,16 @@ struct Viewport
                 renderer_(state, target);
                 return;
             }
-            if (!target.valid() || target.width() <= 0 || target.height() <= 0)
+            if (!target.valid())
             {
                 return;
             }
-            const int first = std::min(state.offset, (std::max)(0, static_cast<int>(state.lines.size()) - target.height()));
-            for (int row = 0; row < target.height(); ++row)
+            const int width = target.size().width;
+            const int height = target.size().height;
+            const int first = std::min(state.offset, (std::max)(0, static_cast<int>(state.lines.size()) - height));
+            for (int row = 0; row < height; ++row)
             {
-                target.fill(Rect{ Point{ 0, row }, Size{ target.width(), 1 } }, " ");
+                target.fill(Rect{ Point{ 0, row }, Size{ width, 1 } }, " ");
                 const int index = first + row;
                 if (index >= 0 && index < static_cast<int>(state.lines.size()))
                 {

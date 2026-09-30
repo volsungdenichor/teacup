@@ -9,38 +9,28 @@ Canvas::Canvas(Surface& target, Rect area) : target_{ &target }, area_{ area.int
 
 Canvas Canvas::sub(const Rect& area) const
 {
-    Canvas result;
-    if (target_ == nullptr)
-    {
-        return result;
-    }
-    result.target_ = target_;
-    result.area_ = area.moved(area_.origin()).intersect(area_);
-    return result;
+    return Canvas{ *target_, area.moved(area_.origin()).intersect(area_) };
 }
 
 void Canvas::put(const Point& p, const Cell& c)
 {
-    if (target_ == nullptr || !bounds().contains(p))
+    if (bounds().contains(p))
     {
-        return;
+        target_->at(area_.origin() + p) = c;
     }
-    target_->at(area_.origin() + p) = c;
 }
 
 void Canvas::style_at(const Point& p, const Style& s)
 {
-    if (target_ == nullptr || !bounds().contains(p))
+    if (bounds().contains(p))
     {
-        return;
+        target_->at(area_.origin() + p).style |= s;
     }
-    Cell& target = target_->at(area_.origin() + p);
-    target.style = target.style.merged(s);
 }
 
 int Canvas::text(const Point& p, const std::string& value, const Style& s)
 {
-    if (target_ == nullptr || p.y < 0 || p.y >= area_.height())
+    if (p.y < 0 || p.y >= area_.height())
     {
         return 0;
     }
@@ -87,13 +77,12 @@ void Canvas::fill(const Rect& area, const std::string& glyph, const Style& s)
 {
     const Rect local = area.intersect(bounds());
     const int w = glyph.empty() ? 1 : utf8::width(glyph);
-    const auto step = w <= 0 ? 1 : w;
     for (int y = local.top(); y < local.bottom(); ++y)
     {
-        for (int x = local.left(); x < local.right(); x += step)
+        for (int x = local.left(); x < local.right(); x += w)
         {
-            put(Point{ x, y }, Cell{ glyph, s, static_cast<std::uint8_t>(step) });
-            for (int k = 1; k < step && x + k < local.right(); ++k)
+            put(Point{ x, y }, Cell{ glyph, s, static_cast<std::uint8_t>(w) });
+            for (int k = 1; k < w && x + k < local.right(); ++k)
             {
                 put(Point{ x + k, y }, Cell{ "", s, 0 });
             }

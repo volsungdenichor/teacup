@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "teacup/detail/input_decoder.hpp"
+#include "teacup/event.hpp"
 
 using namespace teacup;
 

@@ -68,7 +68,8 @@ std::string Surface::row_text(int y) const
 std::string to_plain_text(const Surface& s)
 {
     std::string out;
-    for (int y = 0; y < s.height(); ++y)
+    const int height = s.size().height;
+    for (int y = 0; y < height; ++y)
     {
         if (y != 0)
         {

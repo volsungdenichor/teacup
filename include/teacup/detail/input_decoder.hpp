@@ -3,7 +3,6 @@
 #include <string>
 #include <vector>
 
-#include "teacup/event.hpp"
 #include "teacup/message.hpp"
 
 namespace teacup

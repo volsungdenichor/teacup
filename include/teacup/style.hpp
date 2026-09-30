@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+#include <tuple>
 #include <utility>
 
 #include "teacup/color.hpp"
@@ -86,26 +87,33 @@ public:
     [[nodiscard]] const Color& background() const { return bg_; }
     [[nodiscard]] Attr attributes() const { return attrs_; }
 
-    [[nodiscard]] Style merged(const Style& other) const
+    Style& merge(const Style& other)
     {
-        Style result = *this;
         if (other.fg_.is_set())
         {
-            result.fg_ = other.fg_;
+            fg_ = other.fg_;
         }
         if (other.bg_.is_set())
         {
-            result.bg_ = other.bg_;
+            bg_ = other.bg_;
         }
-        result.attrs_ = result.attrs_ | other.attrs_;
+        attrs_ = attrs_ | other.attrs_;
+        return *this;
+    }
+
+    [[nodiscard]] Style merged(const Style& other) const
+    {
+        Style result = *this;
+        result.merge(other);
         return result;
     }
 
+    friend Style& operator|=(Style& lhs, const Style& rhs) { return lhs.merge(rhs); }
     friend Style operator|(const Style& lhs, const Style& rhs) { return lhs.merged(rhs); }
 
     friend bool operator==(const Style& lhs, const Style& rhs)
     {
-        return lhs.fg_ == rhs.fg_ && lhs.bg_ == rhs.bg_ && lhs.attrs_ == rhs.attrs_;
+        return std::tie(lhs.fg_, lhs.bg_, lhs.attrs_) == std::tie(rhs.fg_, rhs.bg_, rhs.attrs_);
     }
     friend bool operator!=(const Style& lhs, const Style& rhs) { return !(lhs == rhs); }
 

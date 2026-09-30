@@ -90,6 +90,18 @@ struct Rect
     }
 
     friend constexpr bool operator!=(const Rect& lhs, const Rect& rhs) { return !(lhs == rhs); }
+
+    template <class Func>
+    void for_each(const Func& f) const
+    {
+        for (int y = top(); y < bottom(); ++y)
+        {
+            for (int x = left(); x < right(); ++x)
+            {
+                f(Point{ x, y });
+            }
+        }
+    }
 };
 
 enum class Align

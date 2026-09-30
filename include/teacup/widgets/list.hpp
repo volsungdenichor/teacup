@@ -49,12 +49,13 @@ struct List
             {
                 renderer_ = [](const std::string& item, Canvas row, const Style& item_style, bool selected)
                 {
+                    const int width = row.size().width;
                     std::string text = (selected ? "> " : "  ") + item;
-                    while (static_cast<int>(utf8::width(text)) > row.width())
+                    while (static_cast<int>(utf8::width(text)) > width)
                     {
                         text.pop_back();
                     }
-                    while (static_cast<int>(utf8::width(text)) < row.width())
+                    while (static_cast<int>(utf8::width(text)) < width)
                     {
                         text.push_back(' ');
                     }
@@ -197,13 +198,15 @@ struct List
                 view_renderer_(state, target);
                 return;
             }
-            if (!target.valid() || target.width() <= 0 || target.height() <= 0)
+            if (!target.valid())
             {
                 return;
             }
+            const int width = target.size().width;
+            const int height = target.size().height;
             const int selected
                 = state.items.empty() ? 0 : std::clamp(state.selected, 0, static_cast<int>(state.items.size()) - 1);
-            const int visible_items = (std::max)(1, target.height() / item_height_);
+            const int visible_items = (std::max)(1, height / item_height_);
             const int offset
                 = std::clamp(state.offset, 0, (std::max)(0, static_cast<int>(state.items.size()) - visible_items));
             for (int visible_index = 0; visible_index < visible_items; ++visible_index)
@@ -214,7 +217,7 @@ struct List
                     break;
                 }
                 const int row = visible_index * item_height_;
-                if (row >= target.height())
+                if (row >= height)
                 {
                     break;
                 }
@@ -224,8 +227,8 @@ struct List
                 {
                     continue;
                 }
-                const Canvas row_canvas = target.sub(Rect{ 0, row, target.width(), item_height_ });
-                target.fill(Rect{ 0, row, target.width(), item_height_ }, " ", item_style);
+                const Canvas row_canvas = target.sub(Rect{ 0, row, width, item_height_ });
+                target.fill(Rect{ 0, row, width, item_height_ }, " ", item_style);
                 renderer_(state.items[static_cast<std::size_t>(item_index)], row_canvas, item_style, active);
             }
         }

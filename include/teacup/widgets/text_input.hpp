@@ -126,7 +126,7 @@ struct TextInput
                 renderer_(state, target);
                 return;
             }
-            if (!target.valid() || target.width() <= 0)
+            if (!target.valid())
             {
                 return;
             }
@@ -135,14 +135,15 @@ struct TextInput
                                          ? utf8::width(state.value.substr(cursor, next_cursor(state, cursor) - cursor))
                                          : 1;
             std::size_t start = 0;
-            while (utf8::width(state.value.substr(start, cursor - start)) + cursor_width > target.width() && start < cursor)
+            const int width = target.size().width;
+            while (utf8::width(state.value.substr(start, cursor - start)) + cursor_width > width && start < cursor)
             {
                 start = next_cursor(state, start);
             }
             target.fill(" ", text_style_);
             target.text(Point{ 0, 0 }, state.value.substr(start), text_style_);
             const int cursor_x = utf8::width(state.value.substr(start, cursor - start));
-            if (cursor_x < target.width())
+            if (cursor_x < width)
             {
                 const std::string glyph
                     = cursor < state.value.size() ? state.value.substr(cursor, next_cursor(state, cursor) - cursor) : " ";

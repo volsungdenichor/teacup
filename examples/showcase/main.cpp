@@ -48,69 +48,72 @@ struct Model
 teacup::layout::Node showcase_tree()
 {
     using namespace teacup::layout;
-    return column({
-        fixed(
-            7,
-            named(
-                "header",
-                inset(
-                    2,
-                    column({
-                        fixed(
-                            1,
-                            row({
-                                flex(leaf("title")),
-                                fixed(14, leaf("spinner")),
-                            })),
-                        flex(space()),
-                        fixed(1, focusable("tabs")),
-                    })))),
-        flex(row(
-            {
-                percent(
-                    42,
-                    named(
-                        "navigation",
-                        inset(
-                            2,
-                            column(
-                                {
-                                    fixed(6, focusable("menu")),
-                                    flex(focusable("players")),
-                                },
-                                1)))),
-                flex(named(
-                    "components",
+    return column(
+        {
+            fixed(
+                7,
+                named(
+                    "header",
                     inset(
                         2,
                         column(
                             {
-                                fixed(1, leaf("progress")),
-                                fixed(4, leaf("table")),
-                                fixed(5, named("input-box", inset(1, focusable("input")))),
-                            },
-                            1)))),
-            },
-            1)),
-        fixed(1, leaf("footer")),
-    });
+                                fixed(
+                                    1,
+                                    row({
+                                        flex(leaf("title")),
+                                        fixed(14, leaf("spinner")),
+                                    })),
+                                flex(space()),
+                                fixed(1, focusable("tabs")),
+                            })))),
+            flex(row(
+                {
+                    percent(
+                        42,
+                        named(
+                            "navigation",
+                            inset(
+                                2,
+                                column(
+                                    {
+                                        fixed(6, focusable("menu")),
+                                        flex(focusable("players")),
+                                    },
+                                    1)))),
+                    flex(named(
+                        "components",
+                        inset(
+                            2,
+                            column(
+                                {
+                                    fixed(1, leaf("progress")),
+                                    fixed(4, leaf("table")),
+                                    fixed(5, named("input-box", inset(1, focusable("input")))),
+                                },
+                                1)))),
+                },
+                1)),
+            fixed(1, leaf("footer")),
+        });
 }
 
 void render_player(const Player& player, teacup::Canvas row, const teacup::Style&, bool selected)
 {
     using namespace teacup;
+    const int width = row.size().width;
     widgets::Text{ player.name }
         .style(Style{}.fg(selected ? palette::accent() : palette::text()).bold())
-        .render(row.sub(Rect{ 0, 0, row.width(), 1 }));
+        .render(row.sub(Rect{ 0, 0, width, 1 }));
     widgets::Text{ "Country: " + country_name(player.country) }
         .style(Style{}.fg(palette::subtle()))
-        .render(row.sub(Rect{ 0, 1, row.width(), 1 }));
+        .render(row.sub(Rect{ 0, 1, width, 1 }));
 
     widgets::Text{ "Living:" }.style(Style{}.fg(palette::subtle())).render(row.sub(Rect{ 0, 2, 8, 1 }));
     widgets::Checkbox::View{}
         .checked_style(Style{}.fg(palette::success()).bold())
         .unchecked_style(Style{}.fg(palette::danger()))
-        .render(widgets::Checkbox::State{ player.living }, row.sub(Rect{ 8, 2, row.width() - 8, 1 }));
+        .render(widgets::Checkbox::State{ player.living }, row.sub(Rect{ 8, 2, width - 8, 1 }));
 }
 
 teacup::Cmd tick()
@@ -138,7 +141,8 @@ teacup::UpdateResult<Model> update(Model m, const teacup::Message& message)
         const std::string& f = m.events.focus().focused();
         m.menu.selected = f == "input" ? 1 : f == "players" ? 2 : 0;
     };
-    const auto activate_menu = [&] {
+    const auto activate_menu = [&]
+    {
         m.events.focus().set(m.menu.selected == 1 ? "input" : m.menu.selected == 2 ? "players" : "menu");
     };
 
@@ -286,16 +290,17 @@ void view(const Model& m, teacup::Canvas screen)
                     .style(Style{}.fg(palette::text()).bold())
                     .render(screen.sub(areas.get("title")));
                 widgets::Spinner::View{}
-                    .frames({ "⠋ live",
-                              "⠙ live",
-                              "⠹ live",
-                              "⠸ live",
-                              "⠼ live",
-                              "⠴ live",
-                              "⠦ live",
-                              "⠧ live",
-                              "⠇ live",
-                              "⠏ live" })
+                    .frames(
+                        { "⠋ live",
+                          "⠙ live",
+                          "⠹ live",
+                          "⠸ live",
+                          "⠼ live",
+                          "⠴ live",
+                          "⠦ live",
+                          "⠧ live",
+                          "⠇ live",
+                          "⠏ live" })
                     .style(Style{}.fg(palette::accent()))
                     .render(m.spinner, screen.sub(areas.get("spinner")));
                 widgets::Tabs::View{}
@@ -362,18 +367,19 @@ void view(const Model& m, teacup::Canvas screen)
                         [&](Canvas)
                         {
                             const Canvas input_area = screen.sub(areas.get("input"));
+                            const int width = input_area.size().width;
                             widgets::TextInput::View{}
                                 .text_style(Style{}.fg(palette::text()))
                                 .cursor_style(
                                     m.events.focus().is("input") ? Style{}.fg(palette::surface()).bg(palette::accent())
                                                                  : Style{}.fg(palette::subtle()).bg(palette::surface()))
-                                .render(m.input, input_area.sub(Rect{ 0, 0, input_area.width(), 1 }));
+                                .render(m.input, input_area.sub(Rect{ 0, 0, width, 1 }));
                             widgets::Text{ "> " + m.input.value }
                                 .style(Style{}.fg(palette::subtle()))
-                                .render(input_area.sub(Rect{ 0, 1, input_area.width(), 1 }));
+                                .render(input_area.sub(Rect{ 0, 1, width, 1 }));
                             widgets::Text{ "mouse: " + m.last_mouse }
                                 .style(Style{}.fg(palette::subtle()))
-                                .render(input_area.sub(Rect{ 0, 2, input_area.width(), 1 }));
+                                .render(input_area.sub(Rect{ 0, 2, width, 1 }));
                         });
             });
 

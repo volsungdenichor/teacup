@@ -64,8 +64,8 @@ public:
             return;
         }
 
-        const int width = target.width();
-        const int height = target.height();
+        const int width = target.size().width;
+        const int height = target.size().height;
         if (width <= 0 || height <= 0)
         {
             return;

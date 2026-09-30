@@ -107,11 +107,12 @@ struct Tabs
             target.fill(" ", tab_style_);
             int x = 0;
             const int selected = labels_.empty() ? 0 : std::clamp(state.selected, 0, static_cast<int>(labels_.size()) - 1);
-            for (std::size_t i = 0; i < labels_.size() && x < target.width(); ++i)
+            const int width = target.size().width;
+            for (std::size_t i = 0; i < labels_.size() && x < width; ++i)
             {
                 const bool active = static_cast<int>(i) == selected;
                 const std::string text = active ? "[" + labels_[i] + "]" : " " + labels_[i] + " ";
-                const std::string clipped = text.substr(0, static_cast<std::size_t>(target.width() - x));
+                const std::string clipped = text.substr(0, static_cast<std::size_t>(width - x));
                 target.text(Point{ x, 0 }, clipped, active ? selected_style_ : tab_style_);
                 x += static_cast<int>(clipped.size());
             }

@@ -22,6 +22,7 @@ struct Cell
 
     friend bool operator!=(const Cell& lhs, const Cell& rhs) { return !(lhs == rhs); }
 };
+
 class Surface
 {
 public:
@@ -29,17 +30,12 @@ public:
     explicit Surface(Size s);
 
     [[nodiscard]] Size size() const { return size_; }
-    [[nodiscard]] int width() const { return size_.width; }
-    [[nodiscard]] int height() const { return size_.height; }
     [[nodiscard]] Rect bounds() const { return Rect::from_size(size_); }
 
     void resize(Size s);
     void clear(const Style& s = {});
 
-    [[nodiscard]] bool contains(const Point& p) const
-    {
-        return p.x >= 0 && p.y >= 0 && p.x < size_.width && p.y < size_.height;
-    }
+    [[nodiscard]] bool contains(const Point& p) const { return bounds().contains(p); }
 
     [[nodiscard]] const Cell& at(const Point& p) const;
     Cell& at(const Point& p);

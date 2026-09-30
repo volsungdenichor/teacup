@@ -11,16 +11,13 @@ namespace teacup
 class Canvas
 {
 public:
-    Canvas() = default;
     Canvas(Surface& target, Rect area);
 
     explicit Canvas(Surface& target) : Canvas{ target, target.bounds() } { }
 
     [[nodiscard]] Size size() const { return area_.size(); }
-    [[nodiscard]] int width() const { return size().width; }
-    [[nodiscard]] int height() const { return size().height; }
     [[nodiscard]] Rect bounds() const { return Rect::from_size(size()); }
-    [[nodiscard]] bool valid() const { return target_ != nullptr && !area_.empty(); }
+    [[nodiscard]] bool valid() const { return !area_.empty(); }
 
     [[nodiscard]] Canvas sub(const Rect& area) const;
 

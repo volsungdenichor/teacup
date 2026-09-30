@@ -3,6 +3,7 @@
 #include <cstdlib>
 
 #include "teacup/detail/utf8.hpp"
+#include "teacup/event.hpp"
 
 namespace teacup
 {

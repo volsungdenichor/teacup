@@ -72,12 +72,15 @@ public:
         {
             return;
         }
-        const std::vector<std::string> rows = lines(target.width());
-        const int offset = align_offset(valign_, target.height(), static_cast<int>(rows.size()));
+        const int width = target.size().width;
+        const int height = target.size().height;
+
+        const std::vector<std::string> rows = lines(width);
+        const int offset = align_offset(valign_, height, static_cast<int>(rows.size()));
         for (std::size_t i = 0; i < rows.size(); ++i)
         {
             const int y = offset + static_cast<int>(i);
-            if (y < 0 || y >= target.height())
+            if (y < 0 || y >= height)
             {
                 continue;
             }

@@ -113,8 +113,8 @@ public:
 private:
     void draw_border(Canvas& target) const
     {
-        const int w = target.width();
-        const int h = target.height();
+        const int w = target.size().width;
+        const int h = target.size().height;
         if (w <= 0 || h <= 0)
         {
             return;
