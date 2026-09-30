@@ -1,7 +1,10 @@
 #pragma once
 
+#include <algorithm>
 #include <cstdint>
+#include <initializer_list>
 #include <string>
+#include <vector>
 
 #include "teacup/geometry.hpp"
 
@@ -67,6 +70,10 @@ struct KeyEvent
     [[nodiscard]] std::string name() const;
 
     [[nodiscard]] bool matches(const std::string& spec) const { return name() == spec; }
+    [[nodiscard]] bool matches_any(const std::vector<std::string>& specs) const
+    {
+        return std::any_of(specs.begin(), specs.end(), [this](const std::string& spec) { return matches(spec); });
+    }
 };
 
 enum class MouseButton

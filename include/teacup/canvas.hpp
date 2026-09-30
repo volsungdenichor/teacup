@@ -20,6 +20,8 @@ public:
     [[nodiscard]] bool valid() const { return !area_.empty(); }
 
     [[nodiscard]] Canvas sub(const Rect& area) const;
+    [[nodiscard]] Canvas horizontal_slice(int y, int height = 1) const;
+    [[nodiscard]] Canvas indent(int x) const;
 
     void put(const Point& p, const Cell& c);
 

@@ -38,9 +38,8 @@ TEST_CASE("generic list view renders widget-like items")
     widgets::List<MenuItem>::State state{ { { "first" }, { "second" } }, 1 };
     widgets::List<MenuItem>::View view;
     view.item_renderer(
-        [](const MenuItem& item, Canvas row, const Style& item_style, bool selected) {
-            row.text(Point{ 0, 0 }, (selected ? "[" : " ") + item.label + (selected ? "]" : " "), item_style);
-        });
+        [](const MenuItem& item, Canvas row, const Style& item_style, const widgets::ListItemState& state)
+        { row.text(Point{ 0, 0 }, (state.selected ? "[" : " ") + item.label + (state.selected ? "]" : " "), item_style); });
     view.render(state, c);
 
     CHECK(s.row_text(0) == " first      ");
@@ -56,9 +55,8 @@ TEST_CASE("list view allows replacing the default string renderer")
     widgets::List<std::string>::State state{ { "one", "two" }, 1 };
     widgets::List<std::string>::View view;
     view.item_renderer(
-        [](const std::string& item, Canvas row, const Style& item_style, bool selected) {
-            row.text(Point{ 0, 0 }, (selected ? "[" : " ") + item + (selected ? "]" : " "), item_style);
-        });
+        [](const std::string& item, Canvas row, const Style& item_style, const widgets::ListItemState& state)
+        { row.text(Point{ 0, 0 }, (state.selected ? "[" : " ") + item + (state.selected ? "]" : " "), item_style); });
     view.render(state, c);
 
     CHECK(s.row_text(0) == " one      ");
@@ -156,7 +154,7 @@ TEST_CASE("generic list allocates multi-line item regions")
     widgets::List<MenuItem>::State state{ { { "first" }, { "second" } }, 0 };
     widgets::List<MenuItem>::View view;
     view.item_height(2).item_renderer(
-        [](const MenuItem& item, Canvas row, const Style& style, bool)
+        [](const MenuItem& item, Canvas row, const Style& style, const widgets::ListItemState&)
         {
             row.text(Point{ 0, 0 }, item.label, style);
             row.text(Point{ 0, 1 }, "detail", style);
@@ -176,7 +174,7 @@ TEST_CASE("generic list scrolls multi-line item regions")
     widgets::List<MenuItem>::State state{ { { "first" }, { "second" }, { "third" } }, 0 };
     widgets::List<MenuItem>::View view;
     view.item_height(2).item_renderer(
-        [](const MenuItem& item, Canvas row, const Style& style, bool)
+        [](const MenuItem& item, Canvas row, const Style& style, const widgets::ListItemState&)
         {
             row.text(Point{ 0, 0 }, item.label, style);
             row.text(Point{ 0, 1 }, "detail", style);
@@ -207,7 +205,7 @@ TEST_CASE("generic list scrolls enough to reveal the last item")
     widgets::List<MenuItem>::State state{ { { "first" }, { "second" }, { "third" } }, 0 };
     widgets::List<MenuItem>::View view;
     view.item_height(2).item_renderer(
-        [](const MenuItem& item, Canvas row, const Style& style, bool)
+        [](const MenuItem& item, Canvas row, const Style& style, const widgets::ListItemState&)
         {
             row.text(Point{ 0, 0 }, item.label, style);
             row.text(Point{ 0, 1 }, "detail", style);

@@ -17,6 +17,11 @@ namespace teacup
 namespace widgets
 {
 
+struct ListItemState
+{
+    bool selected = false;
+};
+
 template <typename Item>
 struct List
 {
@@ -40,17 +45,17 @@ struct List
     class View
     {
     public:
-        using RendererFn = std::function<void(const Item&, Canvas, const Style&, bool selected)>;
+        using RendererFn = std::function<void(const Item&, Canvas, const Style&, const ListItemState&)>;
         using ViewRendererFn = std::function<void(const State&, Canvas)>;
 
         View()
         {
             if constexpr (std::is_same_v<Item, std::string>)
             {
-                renderer_ = [](const std::string& item, Canvas row, const Style& item_style, bool selected)
+                renderer_ = [](const std::string& item, Canvas row, const Style& item_style, const ListItemState& state)
                 {
                     const int width = row.size().width;
-                    std::string text = (selected ? "> " : "  ") + item;
+                    std::string text = (state.selected ? "> " : "  ") + item;
                     while (static_cast<int>(utf8::width(text)) > width)
                     {
                         text.pop_back();
@@ -106,25 +111,25 @@ struct List
             {
                 return false;
             }
-            if (event.code == Key::up || event.matches("k"))
+            if (event.matches_any({ "up", "k" }))
             {
                 state.selected = (std::max)(0, state.selected - 1);
                 keep_selected_visible(state);
                 return true;
             }
-            if (event.code == Key::down || event.matches("j"))
+            if (event.matches_any({ "down", "j" }))
             {
                 state.selected = (std::min)(static_cast<int>(state.items.size()) - 1, state.selected + 1);
                 keep_selected_visible(state);
                 return true;
             }
-            if (event.code == Key::home)
+            if (event.matches("home"))
             {
                 state.selected = 0;
                 keep_selected_visible(state);
                 return true;
             }
-            if (event.code == Key::end)
+            if (event.matches("end"))
             {
                 state.selected = static_cast<int>(state.items.size()) - 1;
                 keep_selected_visible(state);
@@ -174,8 +179,9 @@ struct List
             }
             if (event.button == MouseButton::wheel_down)
             {
-                state.offset = (std::min)(
-                    state.offset + 1, (std::max)(0, static_cast<int>(state.items.size()) - area.height() / item_height_));
+                state.offset
+                    = (std::min)(state.offset + 1,
+                                 (std::max)(0, static_cast<int>(state.items.size()) - area.height() / item_height_));
                 return true;
             }
             if (event.action != MouseAction::press || event.button != MouseButton::left)
@@ -202,7 +208,6 @@ struct List
             {
                 return;
             }
-            const int width = target.size().width;
             const int height = target.size().height;
             const int selected
                 = state.items.empty() ? 0 : std::clamp(state.selected, 0, static_cast<int>(state.items.size()) - 1);
@@ -227,9 +232,10 @@ struct List
                 {
                     continue;
                 }
-                const Canvas row_canvas = target.sub(Rect{ 0, row, width, item_height_ });
-                target.fill(Rect{ 0, row, width, item_height_ }, " ", item_style);
-                renderer_(state.items[static_cast<std::size_t>(item_index)], row_canvas, item_style, active);
+                Canvas row_canvas = target.horizontal_slice(row, item_height_);
+                row_canvas.fill(" ", item_style);
+                renderer_(
+                    state.items[static_cast<std::size_t>(item_index)], row_canvas, item_style, ListItemState{ active });
             }
         }
 

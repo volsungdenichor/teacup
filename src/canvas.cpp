@@ -12,6 +12,16 @@ Canvas Canvas::sub(const Rect& area) const
     return Canvas{ *target_, area.moved(area_.origin()).intersect(area_) };
 }
 
+Canvas Canvas::horizontal_slice(int y, int height) const
+{
+    return sub(Rect{ Point{ 0, y }, Size{ size().width, height } });
+}
+
+Canvas Canvas::indent(int x) const
+{
+    return sub(Rect{ Point{ x, 0 }, Size{ size().width - x, size().height } });
+}
+
 void Canvas::put(const Point& p, const Cell& c)
 {
     if (bounds().contains(p))

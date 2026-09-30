@@ -98,22 +98,22 @@ teacup::layout::Node showcase_tree()
         });
 }
 
-void render_player(const Player& player, teacup::Canvas row, const teacup::Style&, bool selected)
+void render_player(
+    const Player& player, teacup::Canvas row, const teacup::Style&, const teacup::widgets::ListItemState& state)
 {
     using namespace teacup;
-    const int width = row.size().width;
     widgets::Text{ player.name }
-        .style(Style{}.fg(selected ? palette::accent() : palette::text()).bold())
-        .render(row.sub(Rect{ 0, 0, width, 1 }));
+        .style(Style{}.fg(state.selected ? palette::accent() : palette::text()).bold())
+        .render(row.horizontal_slice(0));
     widgets::Text{ "Country: " + country_name(player.country) }
         .style(Style{}.fg(palette::subtle()))
-        .render(row.sub(Rect{ 0, 1, width, 1 }));
+        .render(row.horizontal_slice(1));
 
-    widgets::Text{ "Living:" }.style(Style{}.fg(palette::subtle())).render(row.sub(Rect{ 0, 2, 8, 1 }));
+    widgets::Text{ "Living:" }.style(Style{}.fg(palette::subtle())).render(row.horizontal_slice(2));
     widgets::Checkbox::View{}
         .checked_style(Style{}.fg(palette::success()).bold())
         .unchecked_style(Style{}.fg(palette::danger()))
-        .render(widgets::Checkbox::State{ player.living }, row.sub(Rect{ 8, 2, width - 8, 1 }));
+        .render(widgets::Checkbox::State{ player.living }, row.horizontal_slice(2).indent(8));
 }
 
 teacup::Cmd tick()
@@ -367,19 +367,18 @@ void view(const Model& m, teacup::Canvas screen)
                         [&](Canvas)
                         {
                             const Canvas input_area = screen.sub(areas.get("input"));
-                            const int width = input_area.size().width;
                             widgets::TextInput::View{}
                                 .text_style(Style{}.fg(palette::text()))
                                 .cursor_style(
                                     m.events.focus().is("input") ? Style{}.fg(palette::surface()).bg(palette::accent())
                                                                  : Style{}.fg(palette::subtle()).bg(palette::surface()))
-                                .render(m.input, input_area.sub(Rect{ 0, 0, width, 1 }));
+                                .render(m.input, input_area.horizontal_slice(0));
                             widgets::Text{ "> " + m.input.value }
                                 .style(Style{}.fg(palette::subtle()))
-                                .render(input_area.sub(Rect{ 0, 1, width, 1 }));
+                                .render(input_area.horizontal_slice(1));
                             widgets::Text{ "mouse: " + m.last_mouse }
                                 .style(Style{}.fg(palette::subtle()))
-                                .render(input_area.sub(Rect{ 0, 2, width, 1 }));
+                                .render(input_area.horizontal_slice(2));
                         });
             });
 
