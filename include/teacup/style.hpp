@@ -10,7 +10,7 @@
 namespace teacup
 {
 
-enum class Attr : std::uint16_t
+enum class Attr : std::uint8_t
 {
     none = 0,
     bold = 1u << 0,
@@ -24,15 +24,15 @@ enum class Attr : std::uint16_t
 
 constexpr Attr operator|(Attr lhs, Attr rhs)
 {
-    return static_cast<Attr>(static_cast<std::uint16_t>(lhs) | static_cast<std::uint16_t>(rhs));
+    return static_cast<Attr>(static_cast<std::uint8_t>(lhs) | static_cast<std::uint8_t>(rhs));
 }
 constexpr Attr operator&(Attr lhs, Attr rhs)
 {
-    return static_cast<Attr>(static_cast<std::uint16_t>(lhs) & static_cast<std::uint16_t>(rhs));
+    return static_cast<Attr>(static_cast<std::uint8_t>(lhs) & static_cast<std::uint8_t>(rhs));
 }
 constexpr bool has(Attr set, Attr flag)
 {
-    return (set & flag) == flag && flag != Attr::none;
+    return flag != Attr::none && (set & flag) == flag;
 }
 
 class Style
@@ -123,7 +123,6 @@ private:
     Attr attrs_ = Attr::none;
 };
 
-/// Full SGR sequence (including ESC[ ... m) that resets and applies `s`.
 std::string sgr_sequence(const Style& s, ColorProfile profile);
 
 }  // namespace teacup

@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+#include <array>
 
 namespace teacup
 {
@@ -32,20 +33,17 @@ public:
 
     static constexpr Color rgb(std::uint8_t r, std::uint8_t g, std::uint8_t b) { return Color{ Kind::rgb, r, g, b }; }
 
-    /// Parses "#rgb", "#rrggbb" (with or without '#'). Returns unset on failure.
     static Color hex(const std::string& text);
 
-    /// Linear interpolation in sRGB space, `t` clamped to [0, 1].
     static Color mix(const Color& from, const Color& to, double t);
 
     [[nodiscard]] constexpr Kind type() const { return kind_; }
     [[nodiscard]] constexpr bool is_set() const { return kind_ != Kind::unset; }
-    [[nodiscard]] constexpr std::uint8_t index() const { return r_; }
-    [[nodiscard]] constexpr std::uint8_t red() const { return r_; }
-    [[nodiscard]] constexpr std::uint8_t green() const { return g_; }
-    [[nodiscard]] constexpr std::uint8_t blue() const { return b_; }
+    [[nodiscard]] constexpr std::uint8_t index() const { return values_[0]; }
+    [[nodiscard]] constexpr std::uint8_t red() const { return values_[0]; }
+    [[nodiscard]] constexpr std::uint8_t green() const { return values_[1]; }
+    [[nodiscard]] constexpr std::uint8_t blue() const { return values_[2]; }
 
-    /// Converts the color so that it can be displayed under `profile`.
     [[nodiscard]] Color adapt(ColorProfile profile) const;
 
     /// Emits the SGR parameters (without ESC[ and final 'm').
@@ -53,20 +51,17 @@ public:
 
     friend constexpr bool operator==(const Color& l, const Color& r)
     {
-        return l.kind_ == r.kind_ && l.r_ == r.r_ && l.g_ == r.g_ && l.b_ == r.b_;
+        return l.kind_ == r.kind_ && l.values_ == r.values_;
     }
     friend constexpr bool operator!=(const Color& l, const Color& r) { return !(l == r); }
 
 private:
-    constexpr Color(Kind k, std::uint8_t r, std::uint8_t g, std::uint8_t b) : kind_{ k }, r_{ r }, g_{ g }, b_{ b } { }
+    constexpr Color(Kind k, std::uint8_t r, std::uint8_t g, std::uint8_t b) : kind_{ k }, values_{ r, g, b } { }
 
     Kind kind_ = Kind::unset;
-    std::uint8_t r_ = 0;
-    std::uint8_t g_ = 0;
-    std::uint8_t b_ = 0;
+    std::array<std::uint8_t, 3> values_ = {};
 };
 
-/// Detects the profile from the environment ($NO_COLOR, $COLORTERM, $TERM).
 ColorProfile detect_color_profile();
 
 namespace palette

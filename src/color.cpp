@@ -49,8 +49,9 @@ std::uint8_t cube_component(std::uint8_t v)
     return static_cast<std::uint8_t>(best);
 }
 
-std::uint8_t rgb_to_ansi256(std::uint8_t r, std::uint8_t g, std::uint8_t b)
+std::uint8_t rgb_to_ansi256(const std::array<std::uint8_t, 3>& rgb)
 {
+    const auto [r, g, b] = rgb;
     if (r == g && g == b)
     {
         if (r < 8)
@@ -66,8 +67,9 @@ std::uint8_t rgb_to_ansi256(std::uint8_t r, std::uint8_t g, std::uint8_t b)
     return static_cast<std::uint8_t>(16 + 36 * cube_component(r) + 6 * cube_component(g) + cube_component(b));
 }
 
-std::uint8_t rgb_to_ansi16(std::uint8_t r, std::uint8_t g, std::uint8_t b)
+std::uint8_t rgb_to_ansi16(const std::array<std::uint8_t, 3>& rgb)
 {
+    const auto [r, g, b] = rgb;
     const int luma = (299 * r + 587 * g + 114 * b) / 1000;
     const int threshold = 128;
     int code = (r > threshold ? 1 : 0) | (g > threshold ? 2 : 0) | (b > threshold ? 4 : 0);
@@ -87,11 +89,11 @@ std::uint8_t ansi256_to_ansi16(std::uint8_t index)
     if (index >= 232)
     {
         const int level = 8 + (index - 232) * 10;
-        return rgb_to_ansi16(to_u8(level), to_u8(level), to_u8(level));
+        return rgb_to_ansi16({ to_u8(level), to_u8(level), to_u8(level) });
     }
     static const int levels[] = { 0, 95, 135, 175, 215, 255 };
     const int n = index - 16;
-    return rgb_to_ansi16(to_u8(levels[n / 36]), to_u8(levels[(n / 6) % 6]), to_u8(levels[n % 6]));
+    return rgb_to_ansi16({ to_u8(levels[n / 36]), to_u8(levels[(n / 6) % 6]), to_u8(levels[n % 6]) });
 }
 
 bool env_contains(const char* name, const char* needle)
@@ -152,15 +154,15 @@ Color Color::adapt(ColorProfile profile) const
     {
         case ColorProfile::no_color: return {};
         case ColorProfile::truecolor: return *this;
-        case ColorProfile::ansi256: return kind_ == Kind::rgb ? indexed(rgb_to_ansi256(r_, g_, b_)) : *this;
+        case ColorProfile::ansi256: return kind_ == Kind::rgb ? indexed(rgb_to_ansi256(values_)) : *this;
         case ColorProfile::ansi16:
             if (kind_ == Kind::rgb)
             {
-                return indexed(rgb_to_ansi16(r_, g_, b_));
+                return indexed(rgb_to_ansi16(values_));
             }
             if (kind_ == Kind::indexed)
             {
-                return indexed(ansi256_to_ansi16(r_));
+                return indexed(ansi256_to_ansi16(index()));
             }
             return *this;
     }
