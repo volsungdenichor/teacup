@@ -172,15 +172,12 @@ teacup::UpdateResult<Model> update(Model m, const teacup::Message& message)
         viewport_view.update(m.viewport, *mouse, areas.get("players"));
         if (mouse->action == teacup::MouseAction::press && mouse->button == teacup::MouseButton::left)
         {
-            if (const std::string* target = areas.hit(mouse->position); target != nullptr && *target == "players")
+            const teacup::Rect players_area = areas.get("players");
+            const int item = players_view.item_at(m.players, mouse->position, players_area);
+            if (item >= 0 && (mouse->position.y - players_area.top()) % 3 == 2)
             {
-                const int row = m.players.offset * 3 + mouse->position.y - areas.get("players").left();
-                const int item = row / 3;
-                if (row % 3 == 2 && item >= 0 && item < static_cast<int>(m.players.items.size()))
-                {
-                    m.players.items[static_cast<std::size_t>(item)].living
-                        = !m.players.items[static_cast<std::size_t>(item)].living;
-                }
+                m.players.items[static_cast<std::size_t>(item)].living
+                    = !m.players.items[static_cast<std::size_t>(item)].living;
             }
         }
         return teacup::next(m);

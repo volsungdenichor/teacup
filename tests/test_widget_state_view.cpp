@@ -97,6 +97,39 @@ TEST_CASE("tabs and spinner views update application-owned state")
     CHECK(spinner_state.frame == 1);
 }
 
+TEST_CASE("tabs hit-testing uses display width, not bytes")
+{
+    widgets::Tabs::State state{};
+    widgets::Tabs::View view;
+    view.labels({ "żółw", "b" });  // "[żółw]" is 6 columns but 9 bytes
+    CHECK(view.update(state, MouseEvent{ Point{ 7, 0 }, MouseButton::left, MouseAction::press }, Rect{ 0, 0, 12, 1 }));
+    CHECK(state.selected == 1);
+}
+
+TEST_CASE("list hit-testing ignores rows that render() does not draw")
+{
+    widgets::List<std::string>::State state{ { "a", "b", "c" }, 0 };
+    widgets::List<std::string>::View view;
+    view.item_height(2);
+    const Rect area{ 0, 0, 8, 3 };  // fits one 2-row item; row 2 is blank
+
+    CHECK_FALSE(view.update(state, MouseEvent{ Point{ 0, 2 }, MouseButton::left, MouseAction::press }, area));
+    CHECK(state.selected == 0);
+
+    state.offset = 99;  // render clamps this to 2, so must the click
+    CHECK(view.update(state, MouseEvent{ Point{ 0, 0 }, MouseButton::left, MouseAction::press }, area));
+    CHECK(state.selected == 2);
+}
+
+TEST_CASE("text input click accounts for horizontal scroll")
+{
+    widgets::TextInput::State state{ "abcdefghij", 10 };
+    widgets::TextInput::View view;
+    // width 4 with cursor at end shows "hij" + cursor, so column 0 is 'h'
+    CHECK(view.update(state, MouseEvent{ Point{ 0, 0 }, MouseButton::left, MouseAction::press }, Rect{ 0, 0, 4, 1 }));
+    CHECK(state.cursor == 7);
+}
+
 TEST_CASE("widget views respond to mouse events")
 {
     widgets::List<std::string>::State list_state{ { "one", "two", "three" }, 0 };

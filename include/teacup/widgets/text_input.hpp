@@ -102,7 +102,7 @@ struct TextInput
                 return false;
             }
             const int column = event.position.x - area.left();
-            std::size_t position = 0;
+            std::size_t position = scroll_start(state, area.width());
             int width = 0;
             while (position < state.value.size() && width < column)
             {
@@ -131,15 +131,8 @@ struct TextInput
                 return;
             }
             const std::size_t cursor = std::min(state.cursor, state.value.size());
-            const int cursor_width = cursor < state.value.size()
-                                         ? utf8::width(state.value.substr(cursor, next_cursor(state, cursor) - cursor))
-                                         : 1;
-            std::size_t start = 0;
             const int width = target.size().width;
-            while (utf8::width(state.value.substr(start, cursor - start)) + cursor_width > width && start < cursor)
-            {
-                start = next_cursor(state, start);
-            }
+            const std::size_t start = scroll_start(state, width);
             target.fill(" ", text_style_);
             target.text(Point{ 0, 0 }, state.value.substr(start), text_style_);
             const int cursor_x = utf8::width(state.value.substr(start, cursor - start));
@@ -152,6 +145,21 @@ struct TextInput
         }
 
     private:
+        // Byte offset of the first visible glyph so the cursor stays on screen; shared by render and hit-testing.
+        static std::size_t scroll_start(const State& state, int width)
+        {
+            const std::size_t cursor = std::min(state.cursor, state.value.size());
+            const int cursor_width = cursor < state.value.size()
+                                         ? utf8::width(state.value.substr(cursor, next_cursor(state, cursor) - cursor))
+                                         : 1;
+            std::size_t start = 0;
+            while (utf8::width(state.value.substr(start, cursor - start)) + cursor_width > width && start < cursor)
+            {
+                start = next_cursor(state, start);
+            }
+            return start;
+        }
+
         static void normalize_cursor(State& state)
         {
             state.cursor = std::min(state.cursor, state.value.size());

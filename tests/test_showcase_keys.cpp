@@ -81,8 +81,9 @@ TEST_CASE("showcase update(): mouse click focuses and selects a player")
 
     const layout::Areas areas = layout::resolve(showcase_tree(), Rect::from_size(m.screen_size));
     const Rect players = areas.get("players");
+    m.players.offset = 1;  // the area fits a single 3-row item, so scroll to show the second one
 
-    const auto click = Point{ players.left() + 1, players.top() + 3 };
+    const auto click = Point{ players.left() + 1, players.top() + 1 };
     m = update(std::move(m),
                Message{ MouseEvent{ click, MouseButton::left, MouseAction::press } })
             .model;

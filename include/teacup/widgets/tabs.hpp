@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "teacup/canvas.hpp"
+#include "teacup/detail/utf8.hpp"
 #include "teacup/event.hpp"
 #include "teacup/style.hpp"
 
@@ -77,20 +78,32 @@ struct Tabs
             {
                 return false;
             }
-            int x = area.left();
-            for (std::size_t i = 0; i < labels_.size(); ++i)
+            const std::vector<Rect> rects = label_rects(state, area);
+            for (std::size_t i = 0; i < rects.size(); ++i)
             {
-                const std::string label
-                    = (static_cast<int>(i) == state.selected) ? "[" + labels_[i] + "]" : " " + labels_[i] + " ";
-                const int width = static_cast<int>(label.size());
-                if (event.position.x >= x && event.position.x < x + width)
+                if (rects[i].contains(event.position))
                 {
                     state.selected = static_cast<int>(i);
                     return true;
                 }
-                x += width;
             }
             return false;
+        }
+
+        // Label rects in `area` coordinates; the single source of truth for render and hit-testing.
+        [[nodiscard]] std::vector<Rect> label_rects(const State& state, const Rect& area) const
+        {
+            std::vector<Rect> rects;
+            rects.reserve(labels_.size());
+            const int selected = selected_index(state);
+            int x = area.left();
+            for (std::size_t i = 0; i < labels_.size(); ++i)
+            {
+                const int width = utf8::width(label_text(i, static_cast<int>(i) == selected));
+                rects.emplace_back(x, area.top(), width, 1);
+                x += width;
+            }
+            return rects;
         }
 
         void render(const State& state, Canvas target) const
@@ -105,20 +118,26 @@ struct Tabs
                 return;
             }
             target.fill(" ", tab_style_);
-            int x = 0;
-            const int selected = labels_.empty() ? 0 : std::clamp(state.selected, 0, static_cast<int>(labels_.size()) - 1);
-            const int width = target.size().width;
-            for (std::size_t i = 0; i < labels_.size() && x < width; ++i)
+            const int selected = selected_index(state);
+            const std::vector<Rect> rects = label_rects(state, target.bounds());
+            for (std::size_t i = 0; i < rects.size() && rects[i].left() < target.size().width; ++i)
             {
                 const bool active = static_cast<int>(i) == selected;
-                const std::string text = active ? "[" + labels_[i] + "]" : " " + labels_[i] + " ";
-                const std::string clipped = text.substr(0, static_cast<std::size_t>(width - x));
-                target.text(Point{ x, 0 }, clipped, active ? selected_style_ : tab_style_);
-                x += static_cast<int>(clipped.size());
+                target.text(rects[i].origin(), label_text(i, active), active ? selected_style_ : tab_style_);
             }
         }
 
     private:
+        [[nodiscard]] int selected_index(const State& state) const
+        {
+            return labels_.empty() ? 0 : std::clamp(state.selected, 0, static_cast<int>(labels_.size()) - 1);
+        }
+
+        [[nodiscard]] std::string label_text(std::size_t index, bool active) const
+        {
+            return active ? "[" + labels_[index] + "]" : " " + labels_[index] + " ";
+        }
+
         std::vector<std::string> labels_;
         Style tab_style_;
         Style selected_style_ = Style{}.bold().underline();
