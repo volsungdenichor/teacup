@@ -27,7 +27,7 @@ void Surface::clear(const Style& s)
 {
     for (auto& c : cells_)
     {
-        c = Cell{ " ", s, 1 };
+        c = Cell{ Glyph{}, s };
     }
 }
 
@@ -56,11 +56,11 @@ std::string Surface::row_text(int y) const
     for (int x = 0; x < size_.width; ++x)
     {
         const Cell& c = at(Point{ x, y });
-        if (c.width == 0)
+        if (c.glyph.width() == 0)
         {
             continue;
         }
-        out += c.text;
+        out += c.glyph.utf8();
     }
     return out;
 }

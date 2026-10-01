@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "teacup/geometry.hpp"
+#include "teacup/glyph.hpp"
 #include "teacup/style.hpp"
 
 namespace teacup
@@ -11,14 +12,10 @@ namespace teacup
 
 struct Cell
 {
-    std::string text = " ";
+    Glyph glyph{};
     Style style{};
-    std::uint8_t width = 1;
 
-    friend bool operator==(const Cell& lhs, const Cell& rhs)
-    {
-        return lhs.width == rhs.width && lhs.text == rhs.text && lhs.style == rhs.style;
-    }
+    friend bool operator==(const Cell& lhs, const Cell& rhs) { return lhs.glyph == rhs.glyph && lhs.style == rhs.style; }
 
     friend bool operator!=(const Cell& lhs, const Cell& rhs) { return !(lhs == rhs); }
 };

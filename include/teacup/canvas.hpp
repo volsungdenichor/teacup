@@ -28,6 +28,7 @@ public:
     void style_at(const Point& p, const Style& s);
 
     int text(const Point& p, const std::string& value, const Style& s = {});
+    int text(const Point& p, const GlyphString& value, const Style& s = {});
 
     int text_aligned(int y, const std::string& value, Align a, const Style& s = {});
 
@@ -38,6 +39,9 @@ public:
     void vertical_line(const Point& p, int length, const std::string& glyph, const Style& s = {});
 
 private:
+    // Writes `glyph` at column `x` of row `y` and advances `x`; false once the row is full.
+    bool place(int& x, int y, const Glyph& glyph, const Style& s);
+
     Surface* target_ = nullptr;
     Rect area_{};
 };

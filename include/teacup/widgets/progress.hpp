@@ -72,11 +72,11 @@ struct Progress
                 {
                     const double t = width > 1 ? static_cast<double>(x) / (width - 1) : 0.0;
                     const Style s = Style{}.fg(Color::mix(from_, to_, t));
-                    target.put(Point{ x, y }, Cell{ filled_, s, 1 });
+                    target.put(Point{ x, y }, Cell{ Glyph::from_utf8(filled_), s });
                 }
                 else
                 {
-                    target.put(Point{ x, y }, Cell{ empty_, track_style_, 1 });
+                    target.put(Point{ x, y }, Cell{ Glyph::from_utf8(empty_), track_style_ });
                 }
             }
         }

@@ -10,6 +10,7 @@ add_executable(teacup_tests
     test_canvas.cpp
     test_color.cpp
     test_focus.cpp
+    test_glyph.cpp
     test_input_decoder.cpp
     test_layout.cpp
     test_layout_tree.cpp

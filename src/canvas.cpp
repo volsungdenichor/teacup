@@ -48,33 +48,59 @@ int Canvas::text(const Point& p, const std::string& value, const Style& s)
     std::size_t pos = 0;
     while (pos < value.size())
     {
-        const char32_t cp = utf8::decode(value, pos);
-        if (cp == U'\n')
+        const std::size_t end = utf8::next_grapheme(value, pos);
+        const std::string_view cluster{ value.data() + pos, end - pos };
+        pos = end;
+        if (cluster == "\n" || cluster == "\r\n")
         {
             break;
         }
-        const int w = utf8::width(cp);
-        if (w == 0)
-        {
-            continue;
-        }
-        if (cursor >= area_.width())
+        if (!place(cursor, p.y, Glyph::from_utf8(cluster), s))
         {
             break;
         }
-        std::string glyph;
-        utf8::encode(cp, glyph);
-        if (cursor >= 0)
-        {
-            put(Point{ cursor, p.y }, Cell{ glyph, s, static_cast<std::uint8_t>(w) });
-            if (w == 2 && cursor + 1 < area_.width())
-            {
-                put(Point{ cursor + 1, p.y }, Cell{ "", s, 0 });
-            }
-        }
-        cursor += w;
     }
     return cursor - p.x;
+}
+
+int Canvas::text(const Point& p, const GlyphString& value, const Style& s)
+{
+    if (p.y < 0 || p.y >= area_.height())
+    {
+        return 0;
+    }
+    int cursor = p.x;
+    for (const Glyph& glyph : value)
+    {
+        if (!place(cursor, p.y, glyph, s))
+        {
+            break;
+        }
+    }
+    return cursor - p.x;
+}
+
+bool Canvas::place(int& x, int y, const Glyph& glyph, const Style& s)
+{
+    const int w = glyph.width();
+    if (w == 0)
+    {
+        return true;
+    }
+    if (x + w > area_.width())
+    {
+        return false;
+    }
+    if (x >= 0)
+    {
+        put(Point{ x, y }, Cell{ glyph, s });
+        if (w == 2)
+        {
+            put(Point{ x + 1, y }, Cell{ Glyph::continuation(), s });
+        }
+    }
+    x += w;
+    return true;
 }
 
 int Canvas::text_aligned(int y, const std::string& value, Align a, const Style& s)
@@ -86,15 +112,20 @@ int Canvas::text_aligned(int y, const std::string& value, Align a, const Style& 
 void Canvas::fill(const Rect& area, const std::string& glyph, const Style& s)
 {
     const Rect local = area.intersect(bounds());
-    const int w = glyph.empty() ? 1 : utf8::width(glyph);
+    Glyph cell_glyph = Glyph::from_utf8(glyph);
+    if (cell_glyph.width() == 0)
+    {
+        cell_glyph = Glyph{};
+    }
+    const int w = cell_glyph.width();
     for (int y = local.top(); y < local.bottom(); ++y)
     {
         for (int x = local.left(); x < local.right(); x += w)
         {
-            put(Point{ x, y }, Cell{ glyph, s, static_cast<std::uint8_t>(w) });
+            put(Point{ x, y }, Cell{ cell_glyph, s });
             for (int k = 1; k < w && x + k < local.right(); ++k)
             {
-                put(Point{ x + k, y }, Cell{ "", s, 0 });
+                put(Point{ x + k, y }, Cell{ Glyph::continuation(), s });
             }
         }
     }

@@ -76,12 +76,7 @@ public:
 
         if (!headers_.empty())
         {
-            std::string line = render_row(headers_, col_widths);
-            while (static_cast<int>(utf8::width(line)) < width)
-            {
-                line.push_back(' ');
-            }
-            target.text(Point{ 0, row_index }, line, header_style_);
+            target.text(Point{ 0, row_index }, pad_to(render_row(headers_, col_widths), width), header_style_);
             ++row_index;
         }
 
@@ -91,12 +86,7 @@ public:
             {
                 break;
             }
-            std::string line = render_row(row, col_widths);
-            while (static_cast<int>(utf8::width(line)) < width)
-            {
-                line.push_back(' ');
-            }
-            target.text(Point{ 0, row_index }, line, row_style_);
+            target.text(Point{ 0, row_index }, pad_to(render_row(row, col_widths), width), row_style_);
             ++row_index;
         }
 
@@ -108,6 +98,12 @@ public:
     }
 
 private:
+    static std::string pad_to(std::string text, int width)
+    {
+        text.append(static_cast<std::size_t>((std::max)(0, width - utf8::width(text))), ' ');
+        return text;
+    }
+
     [[nodiscard]] std::vector<int> compute_column_widths() const
     {
         std::size_t column_count = 0;
@@ -148,18 +144,7 @@ private:
             const int max_width = i < widths.size() ? widths[i] : 0;
             if (max_width > 0)
             {
-                const int current = static_cast<int>(utf8::width(cell));
-                if (current > max_width)
-                {
-                    while (static_cast<int>(utf8::width(cell)) > max_width)
-                    {
-                        cell.pop_back();
-                    }
-                }
-                else
-                {
-                    cell.append(static_cast<std::size_t>(max_width - current), ' ');
-                }
+                cell = pad_to(GlyphString::from_utf8(cell).truncate(max_width).to_utf8(), max_width);
             }
             if (!line.empty())
             {

@@ -2,6 +2,7 @@
 
 #include "teacup/canvas.hpp"
 #include "teacup/widgets/block.hpp"
+#include "teacup/widgets/list.hpp"
 
 using namespace teacup;
 
@@ -66,7 +67,49 @@ TEST_CASE("wide glyphs occupy two columns")
     Canvas c{ s };
     c.text(Point{ 0, 0 }, "\xe6\x97\xa5x");  // U+65E5 then 'x'
 
-    CHECK(s.at(Point{ 0, 0 }).width == 2);
-    CHECK(s.at(Point{ 1, 0 }).width == 0);
-    CHECK(s.at(Point{ 2, 0 }).text == "x");
+    CHECK(s.at(Point{ 0, 0 }).glyph.width() == 2);
+    CHECK(s.at(Point{ 1, 0 }).glyph.is_continuation());
+    CHECK(s.at(Point{ 2, 0 }).glyph.utf8() == "x");
+}
+
+TEST_CASE("combining marks stay in the cell of their base character")
+{
+    Surface s{ Size{ 3, 1 } };
+    s.clear();
+    Canvas c{ s };
+    c.text(Point{ 0, 0 }, "e\xcc\x81x");  // 'e' + U+0301 COMBINING ACUTE, then 'x'
+
+    CHECK(s.at(Point{ 0, 0 }).glyph.utf8() == "e\xcc\x81");
+    CHECK(s.at(Point{ 1, 0 }).glyph.utf8() == "x");
+    CHECK(s.row_text(0) == "e\xcc\x81x ");
+}
+
+TEST_CASE("wide glyph that does not fit is not drawn half")
+{
+    Surface s{ Size{ 2, 1 } };
+    s.clear();
+    Canvas c{ s };
+    CHECK(c.text(Point{ 0, 0 }, "a\xe6\x97\xa5") == 1);
+    CHECK(s.row_text(0) == "a ");
+}
+
+TEST_CASE("block title is truncated before the right corner")
+{
+    Surface s{ Size{ 6, 3 } };
+    s.clear();
+    Canvas c{ s };
+    widgets::Block{}.border(Border::ascii()).title("\xc5\xbc\xc3\xb3\xc5\x82wik").render(c);  // "żółwik"
+
+    CHECK(s.row_text(0) == "+\xc5\xbc\xc3\xb3\xc5\x82w+");
+}
+
+TEST_CASE("default list renderer truncates UTF-8 items on glyph boundaries")
+{
+    Surface s{ Size{ 4, 1 } };
+    s.clear();
+    Canvas c{ s };
+    widgets::List<std::string>::State state{ { "\xe6\x97\xa5\xe6\x9c\xac" }, 0 };  // two wide CJK glyphs
+    widgets::List<std::string>::View{}.render(state, c);
+
+    CHECK(s.row_text(0) == "> \xe6\x97\xa5");
 }

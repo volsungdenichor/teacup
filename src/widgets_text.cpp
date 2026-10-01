@@ -49,17 +49,19 @@ std::vector<std::string> wrap_text(const std::string& text, int width)
     std::size_t pos = 0;
     while (pos < text.size())
     {
-        const char32_t cp = utf8::decode(text, pos);
-        if (cp == U'\n')
+        const std::size_t end = utf8::next_grapheme(text, pos);
+        const std::string_view cluster{ text.data() + pos, end - pos };
+        pos = end;
+        if (cluster == "\n" || cluster == "\r\n")
         {
             flush_line();
             continue;
         }
-        const int cp_width = utf8::width(cp);
-        if (cp == U' ')
+        const int cluster_width = utf8::grapheme_width(cluster);
+        if (cluster == " ")
         {
             flush_word();
-            if (width > 0 && line_width + cp_width > width)
+            if (width > 0 && line_width + cluster_width > width)
             {
                 trim_trailing_spaces(line);
                 lines.push_back(line);
@@ -68,18 +70,18 @@ std::vector<std::string> wrap_text(const std::string& text, int width)
                 continue;  // swallow the space at a wrap point
             }
             line += ' ';
-            line_width += cp_width;
+            line_width += cluster_width;
             continue;
         }
-        if (width > 0 && word_width + cp_width > width)
+        if (width > 0 && word_width + cluster_width > width)
         {
             flush_word();  // single word longer than the line: hard break
             lines.push_back(line);
             line.clear();
             line_width = 0;
         }
-        utf8::encode(cp, word);
-        word_width += cp_width;
+        word += cluster;
+        word_width += cluster_width;
     }
     flush_line();
 

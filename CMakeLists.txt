@@ -24,6 +24,7 @@ option(TEACUP_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 add_library(teacup
     src/canvas.cpp
     src/color.cpp
+    src/glyph.cpp
     src/input_decoder.cpp
     src/layout.cpp
     src/program.cpp

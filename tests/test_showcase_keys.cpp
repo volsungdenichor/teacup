@@ -14,7 +14,7 @@ Model fresh_model()
 {
     Model initial;
     initial.menu.items = { "overview", "text input", "players", "table", "progress" };
-    initial.input.value = "type here";
+    initial.input.value = GlyphString::from_utf8("type here");
     initial.input.cursor = initial.input.value.size();
     initial.players.items = {
         { "Name: McEnroe", Country::usa, true },
@@ -103,9 +103,9 @@ TEST_CASE("showcase update(): text input receives keys when focused")
     REQUIRE(m.events.focus().focused() == "input");
 
     step(KeyEvent{ Key::character, "!" });
-    CHECK(m.input.value == "type here!");
+    CHECK(m.input.value.to_utf8() == "type here!");
     step(KeyEvent{ Key::backspace });
-    CHECK(m.input.value == "type here");
+    CHECK(m.input.value.to_utf8() == "type here");
     step(KeyEvent{ Key::left });
     CHECK(m.input.cursor == m.input.value.size() - 1);
 

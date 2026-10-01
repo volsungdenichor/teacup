@@ -6,8 +6,8 @@
 #include <utility>
 
 #include "teacup/canvas.hpp"
-#include "teacup/detail/utf8.hpp"
 #include "teacup/event.hpp"
+#include "teacup/glyph.hpp"
 #include "teacup/style.hpp"
 
 namespace teacup
@@ -19,8 +19,8 @@ struct TextInput
 {
     struct State
     {
-        std::string value;
-        std::size_t cursor = 0;
+        GlyphString value;
+        std::size_t cursor = 0;  // glyph index
     };
 
     class View
@@ -47,39 +47,45 @@ struct TextInput
 
         bool update(State& state, const KeyEvent& event) const
         {
-            normalize_cursor(state);
+            clamp_cursor(state);
             if (event.code == Key::space)
             {
-                state.value.insert(state.cursor, " ");
-                ++state.cursor;
+                insert(state, " ");
                 return true;
             }
             if (event.code == Key::character && !event.text.empty() && !has(event.modifiers, Modifier::ctrl)
                 && !has(event.modifiers, Modifier::alt))
             {
-                state.value.insert(state.cursor, event.text);
-                state.cursor += event.text.size();
-                normalize_cursor(state);
+                insert(state, event.text);
                 return true;
             }
             switch (event.code)
             {
-                case Key::left: state.cursor = previous_cursor(state); return true;
-                case Key::right: state.cursor = next_cursor(state, state.cursor); return true;
+                case Key::left:
+                    if (state.cursor > 0)
+                    {
+                        --state.cursor;
+                    }
+                    return true;
+                case Key::right:
+                    if (state.cursor < state.value.size())
+                    {
+                        ++state.cursor;
+                    }
+                    return true;
                 case Key::home: state.cursor = 0; return true;
                 case Key::end: state.cursor = state.value.size(); return true;
                 case Key::backspace:
                     if (state.cursor > 0)
                     {
-                        const std::size_t start = previous_cursor(state);
-                        state.value.erase(start, state.cursor - start);
-                        state.cursor = start;
+                        --state.cursor;
+                        state.value.erase(state.value.begin() + static_cast<std::ptrdiff_t>(state.cursor));
                     }
                     return true;
                 case Key::del:
                     if (state.cursor < state.value.size())
                     {
-                        state.value.erase(state.cursor, next_cursor(state, state.cursor) - state.cursor);
+                        state.value.erase(state.value.begin() + static_cast<std::ptrdiff_t>(state.cursor));
                     }
                     return true;
                 default: return false;
@@ -88,10 +94,8 @@ struct TextInput
 
         bool update(State& state, const PasteEvent& event) const
         {
-            normalize_cursor(state);
-            state.value.insert(state.cursor, event.text);
-            state.cursor += event.text.size();
-            normalize_cursor(state);
+            clamp_cursor(state);
+            insert(state, event.text);
             return true;
         }
 
@@ -106,14 +110,13 @@ struct TextInput
             int width = 0;
             while (position < state.value.size() && width < column)
             {
-                const std::size_t next = next_cursor(state, position);
-                const int glyph_width = utf8::width(state.value.substr(position, next - position));
+                const int glyph_width = state.value[position].width();
                 if (width + glyph_width / 2 >= column)
                 {
                     break;
                 }
                 width += glyph_width;
-                position = next;
+                ++position;
             }
             state.cursor = position;
             return true;
@@ -135,57 +138,39 @@ struct TextInput
             const std::size_t start = scroll_start(state, width);
             target.fill(" ", text_style_);
             target.text(Point{ 0, 0 }, state.value.substr(start), text_style_);
-            const int cursor_x = utf8::width(state.value.substr(start, cursor - start));
+            const int cursor_x = state.value.substr(start, cursor - start).width();
             if (cursor_x < width)
             {
-                const std::string glyph
-                    = cursor < state.value.size() ? state.value.substr(cursor, next_cursor(state, cursor) - cursor) : " ";
-                target.text(Point{ cursor_x, 0 }, glyph, cursor_style_);
+                const GlyphString under_cursor
+                    = cursor < state.value.size() ? state.value.substr(cursor, 1) : GlyphString::from_utf8(" ");
+                target.text(Point{ cursor_x, 0 }, under_cursor, cursor_style_);
             }
         }
 
     private:
-        // Byte offset of the first visible glyph so the cursor stays on screen; shared by render and hit-testing.
+        // Index of the first visible glyph so the cursor stays on screen; shared by render and hit-testing.
         static std::size_t scroll_start(const State& state, int width)
         {
             const std::size_t cursor = std::min(state.cursor, state.value.size());
-            const int cursor_width = cursor < state.value.size()
-                                         ? utf8::width(state.value.substr(cursor, next_cursor(state, cursor) - cursor))
-                                         : 1;
+            const int cursor_width = cursor < state.value.size() ? state.value[cursor].width() : 1;
             std::size_t start = 0;
-            while (utf8::width(state.value.substr(start, cursor - start)) + cursor_width > width && start < cursor)
+            int visible = state.value.substr(0, cursor).width();
+            while (visible + cursor_width > width && start < cursor)
             {
-                start = next_cursor(state, start);
+                visible -= state.value[start].width();
+                ++start;
             }
             return start;
         }
 
-        static void normalize_cursor(State& state)
+        static void clamp_cursor(State& state) { state.cursor = std::min(state.cursor, state.value.size()); }
+
+        // Re-segments around the insertion so typed combining marks join the preceding glyph.
+        static void insert(State& state, const std::string& text)
         {
-            state.cursor = std::min(state.cursor, state.value.size());
-            while (state.cursor > 0 && state.cursor < state.value.size()
-                   && (static_cast<unsigned char>(state.value[state.cursor]) & 0xC0u) == 0x80u)
-            {
-                --state.cursor;
-            }
-        }
-        static std::size_t previous_cursor(const State& state)
-        {
-            if (state.cursor == 0)
-                return 0;
-            std::size_t position = state.cursor - 1;
-            while (position > 0 && (static_cast<unsigned char>(state.value[position]) & 0xC0u) == 0x80u)
-                --position;
-            return position;
-        }
-        static std::size_t next_cursor(const State& state, std::size_t position)
-        {
-            if (position >= state.value.size())
-                return state.value.size();
-            ++position;
-            while (position < state.value.size() && (static_cast<unsigned char>(state.value[position]) & 0xC0u) == 0x80u)
-                ++position;
-            return position;
+            const std::string before = state.value.substr(0, state.cursor).to_utf8() + text;
+            state.value = GlyphString::from_utf8(before + state.value.substr(state.cursor).to_utf8());
+            state.cursor = std::min(GlyphString::from_utf8(before).size(), state.value.size());
         }
 
         Style text_style_;

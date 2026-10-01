@@ -65,11 +65,11 @@ TEST_CASE("list view allows replacing the default string renderer")
 
 TEST_CASE("text input view updates application-owned text state")
 {
-    widgets::TextInput::State state{ "ab", 2 };
+    widgets::TextInput::State state{ GlyphString::from_utf8("ab"), 2 };
     widgets::TextInput::View view;
 
     REQUIRE(view.update(state, KeyEvent{ Key::space }));
-    CHECK(state.value == "ab ");
+    CHECK(state.value.to_utf8() == "ab ");
     CHECK(state.cursor == 3);
 }
 
@@ -123,7 +123,7 @@ TEST_CASE("list hit-testing ignores rows that render() does not draw")
 
 TEST_CASE("text input click accounts for horizontal scroll")
 {
-    widgets::TextInput::State state{ "abcdefghij", 10 };
+    widgets::TextInput::State state{ GlyphString::from_utf8("abcdefghij"), 10 };
     widgets::TextInput::View view;
     // width 4 with cursor at end shows "hij" + cursor, so column 0 is 'h'
     CHECK(view.update(state, MouseEvent{ Point{ 0, 0 }, MouseButton::left, MouseAction::press }, Rect{ 0, 0, 4, 1 }));
@@ -151,7 +151,7 @@ TEST_CASE("widget views respond to mouse events")
         viewport_state, MouseEvent{ Point{ 0, 0 }, MouseButton::wheel_up, MouseAction::press }, Rect{ 0, 0, 8, 2 }));
     CHECK(viewport_state.offset == 0);
 
-    widgets::TextInput::State input_state{ "abc", 0 };
+    widgets::TextInput::State input_state{ GlyphString::from_utf8("abc"), 0 };
     widgets::TextInput::View input_view;
     CHECK(input_view.update(
         input_state, MouseEvent{ Point{ 2, 0 }, MouseButton::left, MouseAction::press }, Rect{ 0, 0, 8, 1 }));

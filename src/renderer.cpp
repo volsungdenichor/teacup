@@ -39,7 +39,7 @@ std::string Renderer::build(const Surface& frame)
         [&](const Point& p)
         {
             const Cell& current = frame.at(p);
-            if (current.width == 0)
+            if (current.glyph.width() == 0)
             {
                 return;  // trailing half of a wide glyph
             }
@@ -57,8 +57,8 @@ std::string Renderer::build(const Surface& frame)
                 active = current.style;
                 style_known = true;
             }
-            out += current.text.empty() ? " " : current.text;
-            cursor = Point{ p.x + current.width, p.y };
+            out += current.glyph.utf8();
+            cursor = Point{ p.x + current.glyph.width(), p.y };
         });
 
     if (!out.empty())

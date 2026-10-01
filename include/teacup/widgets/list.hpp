@@ -54,17 +54,8 @@ struct List
             {
                 renderer_ = [](const std::string& item, Canvas row, const Style& item_style, const ListItemState& state)
                 {
-                    const int width = row.size().width;
-                    std::string text = (state.selected ? "> " : "  ") + item;
-                    while (static_cast<int>(utf8::width(text)) > width)
-                    {
-                        text.pop_back();
-                    }
-                    while (static_cast<int>(utf8::width(text)) < width)
-                    {
-                        text.push_back(' ');
-                    }
-                    row.text(Point{ 0, 0 }, text, item_style);
+                    row.fill(" ", item_style);
+                    row.text(Point{ 0, 0 }, (state.selected ? "> " : "  ") + item, item_style);
                 };
             }
         }

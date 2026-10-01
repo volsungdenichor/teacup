@@ -45,7 +45,7 @@ TEST_CASE("focus ring cycles through its order")
 TEST_CASE("router delivers keys only to the focused widget")
 {
     widgets::List<std::string>::State menu{ { "a", "b" }, 0 };
-    widgets::TextInput::State input{ "x", 1 };
+    widgets::TextInput::State input{ GlyphString::from_utf8("x"), 1 };
 
     Router events;
     events.add("menu", route_keys(menu, widgets::List<std::string>::View{}));
@@ -55,7 +55,7 @@ TEST_CASE("router delivers keys only to the focused widget")
 
     REQUIRE(events.route(Message{ KeyEvent{ Key::down } }, layout));
     CHECK(menu.selected == 1);  // menu is focused, list ate the key
-    CHECK(input.value == "x");
+    CHECK(input.value.to_utf8() == "x");
 
     events.focus().set("input");
     REQUIRE(events.route(Message{ KeyEvent{ Key ::left } }, layout));
@@ -65,7 +65,7 @@ TEST_CASE("router delivers keys only to the focused widget")
 
 TEST_CASE("router cycles focus with tab and shift+tab")
 {
-    widgets::TextInput::State input{ "", 0 };
+    widgets::TextInput::State input{};
 
     Router events;
     events.add("input", route_keys(input, widgets::TextInput::View{}));
@@ -148,7 +148,7 @@ TEST_CASE("tab always cycles focus and is never dispatched to widgets")
 TEST_CASE("a hub widget can hand focus off and take it back")
 {
     widgets::List<std::string>::State menu{ { "overview", "editor" }, 0 };
-    widgets::TextInput::State input{ "", 0 };
+    widgets::TextInput::State input{};
 
     Router events;
     // Menu arrows move only the selection; focus changes on enter.
@@ -165,7 +165,7 @@ TEST_CASE("a hub widget can hand focus off and take it back")
     if (menu.selected == 1)
         events.focus().set("editor");
     REQUIRE(events.route(Message{ KeyEvent{ Key::character, "a" } }, layout));
-    CHECK(input.value == "a");
+    CHECK(input.value.to_utf8() == "a");
 
     // App policy: enter backs out to the hub.
     events.focus().set("menu");
@@ -216,7 +216,7 @@ TEST_CASE("a focused list navigates while the hub selection mirrors focus")
 
 TEST_CASE("router adopts the layout-declared focus order")
 {
-    widgets::TextInput::State input{ "x", 1 };
+    widgets::TextInput::State input{ GlyphString::from_utf8("x"), 1 };
 
     Router events;
     events.add("bottom", route_keys(input, widgets::TextInput::View{}));
