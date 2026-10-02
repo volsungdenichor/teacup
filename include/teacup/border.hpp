@@ -20,7 +20,7 @@ struct Border
 
     static Border rounded()
     {
-        Border b;
+        Border b = plain();
         b.top_left = "╭";
         b.top_right = "╮";
         b.bottom_left = "╰";

@@ -10,20 +10,16 @@
 namespace teacup
 {
 
-// One terminal character: a grapheme cluster with its cached display width (0, 1 or 2).
 class Glyph
 {
 public:
     Glyph() = default;
 
-    // Implicit so literals like "─" can be passed wherever a Glyph is expected.
-    Glyph(const char* text) : Glyph{ from_utf8(text) } { }
     Glyph(const std::string& text) : Glyph{ from_utf8(text) } { }
-
-    // Takes the first grapheme cluster of `text`; empty text yields a continuation.
+    Glyph(std::string_view text) : Glyph{ from_utf8(text) } { }
+    Glyph(const char* text) : Glyph{ std::string_view{ text } } { }
     static Glyph from_utf8(std::string_view text);
 
-    // Right half of a wide glyph.
     static Glyph continuation();
 
     [[nodiscard]] std::string_view utf8() const;
@@ -38,7 +34,6 @@ public:
     friend bool operator!=(const Glyph& lhs, const Glyph& rhs) { return !(lhs == rhs); }
 
 private:
-    // Clusters longer than the inline buffer are interned; bytes_ then holds the pool pointer.
     static constexpr std::uint8_t interned = 0xFF;
 
     std::array<char, 14> bytes_{ ' ' };
@@ -58,21 +53,27 @@ public:
     GlyphString() = default;
     explicit GlyphString(std::vector<Glyph> glyphs) : glyphs_{ std::move(glyphs) } { }
 
-    // Implicit so literals and std::string can be passed wherever a GlyphString is expected.
-    GlyphString(const char* text) : GlyphString{ from_utf8(text) } { }
     GlyphString(const std::string& text) : GlyphString{ from_utf8(text) } { }
+    GlyphString(const char* text) : GlyphString{ from_utf8(text) } { }
+    GlyphString(std::string_view text) : GlyphString{ from_utf8(text) } { }
 
     static GlyphString from_utf8(std::string_view text);
     [[nodiscard]] std::string to_utf8() const;
 
+    template <typename... Args>
+    static GlyphString combine(Args&&... arg)
+    {
+        GlyphString result;
+        ((result += GlyphString{ std::forward<Args>(arg) }), ...);
+        return result;
+    }
+
     [[nodiscard]] int width() const;
 
-    // Longest prefix that fits in `columns`; never splits a wide glyph.
     [[nodiscard]] GlyphString truncate(int columns) const;
 
     [[nodiscard]] GlyphString substr(std::size_t pos, std::size_t count = std::string::npos) const;
 
-    // Index of the glyph covering `column`, or size() past the end.
     [[nodiscard]] std::size_t index_at_column(int column) const;
 
     [[nodiscard]] std::size_t size() const { return glyphs_.size(); }
@@ -93,7 +94,6 @@ public:
     iterator insert(const_iterator pos, const Glyph& glyph) { return glyphs_.insert(pos, glyph); }
     iterator erase(const_iterator pos) { return glyphs_.erase(pos); }
 
-    // Appends glyph-wise; does not re-segment across the seam.
     GlyphString& operator+=(const GlyphString& other)
     {
         glyphs_.insert(glyphs_.end(), other.glyphs_.begin(), other.glyphs_.end());
@@ -108,5 +108,15 @@ public:
 private:
     std::vector<Glyph> glyphs_;
 };
+
+inline Glyph operator""_g(const char* text, std::size_t)
+{
+    return Glyph::from_utf8(text);
+}
+
+inline GlyphString operator""_gs(const char* text, std::size_t)
+{
+    return GlyphString::from_utf8(text);
+}
 
 }  // namespace teacup

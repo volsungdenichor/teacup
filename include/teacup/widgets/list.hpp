@@ -8,7 +8,6 @@
 #include <vector>
 
 #include "teacup/canvas.hpp"
-#include "teacup/detail/utf8.hpp"
 #include "teacup/event.hpp"
 #include "teacup/style.hpp"
 
@@ -55,7 +54,10 @@ struct List
                 renderer_ = [](const std::string& item, Canvas row, const Style& item_style, const ListItemState& state)
                 {
                     row.fill(" ", item_style);
-                    row.text(Point{ 0, 0 }, (state.selected ? "> " : "  ") + item, item_style);
+                    row.text(
+                        Point{ 0, 0 },
+                        GlyphString::combine(state.selected ? GlyphString{ "> " } : GlyphString{ "  " }, item),
+                        item_style);
                 };
             }
         }
@@ -131,14 +133,11 @@ struct List
 
         [[nodiscard]] int visible_items(int height) const { return (std::max)(1, height / item_height_); }
 
-        // Index of the first item actually drawn for a given height.
         [[nodiscard]] int first_visible(const State& state, int height) const
         {
-            return std::clamp(
-                state.offset, 0, (std::max)(0, static_cast<int>(state.items.size()) - visible_items(height)));
+            return std::clamp(state.offset, 0, (std::max)(0, static_cast<int>(state.items.size()) - visible_items(height)));
         }
 
-        // Item index under `point`, or -1; mirrors the rows painted by render().
         [[nodiscard]] int item_at(const State& state, const Point& point, const Rect& area) const
         {
             if (!area.contains(point))

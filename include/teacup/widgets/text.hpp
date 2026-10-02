@@ -1,7 +1,6 @@
 #pragma once
 
 #include <functional>
-#include <string>
 #include <utility>
 #include <vector>
 
@@ -80,11 +79,10 @@ public:
         for (std::size_t i = 0; i < rows.size(); ++i)
         {
             const int y = offset + static_cast<int>(i);
-            if (y < 0 || y >= height)
+            if (y >= 0 && y < height)
             {
-                continue;
+                target.text_aligned(y, rows[i], align_, style_);
             }
-            target.text_aligned(y, rows[i], align_, style_);
         }
     }
 

@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <functional>
-#include <string>
 #include <utility>
 #include <vector>
 
@@ -90,7 +89,6 @@ struct Tabs
             return false;
         }
 
-        // Label rects in `area` coordinates; the single source of truth for render and hit-testing.
         [[nodiscard]] std::vector<Rect> label_rects(const State& state, const Rect& area) const
         {
             std::vector<Rect> rects;

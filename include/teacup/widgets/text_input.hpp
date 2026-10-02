@@ -148,7 +148,6 @@ struct TextInput
         }
 
     private:
-        // Index of the first visible glyph so the cursor stays on screen; shared by render and hit-testing.
         static std::size_t scroll_start(const State& state, int width)
         {
             const std::size_t cursor = std::min(state.cursor, state.value.size());
@@ -165,7 +164,6 @@ struct TextInput
 
         static void clamp_cursor(State& state) { state.cursor = std::min(state.cursor, state.value.size()); }
 
-        // Re-segments around the insertion so typed combining marks join the preceding glyph.
         static void insert(State& state, const std::string& text)
         {
             const std::string before = state.value.substr(0, state.cursor).to_utf8() + text;
