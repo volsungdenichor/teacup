@@ -39,7 +39,7 @@ struct Progress
             return *this;
         }
 
-        View& glyphs(std::string filled, std::string empty)
+        View& glyphs(Glyph filled, Glyph empty)
         {
             filled_ = std::move(filled);
             empty_ = std::move(empty);
@@ -72,11 +72,11 @@ struct Progress
                 {
                     const double t = width > 1 ? static_cast<double>(x) / (width - 1) : 0.0;
                     const Style s = Style{}.fg(Color::mix(from_, to_, t));
-                    target.put(Point{ x, y }, Cell{ Glyph::from_utf8(filled_), s });
+                    target.put(Point{ x, y }, Cell{ filled_, s });
                 }
                 else
                 {
-                    target.put(Point{ x, y }, Cell{ Glyph::from_utf8(empty_), track_style_ });
+                    target.put(Point{ x, y }, Cell{ empty_, track_style_ });
                 }
             }
         }
@@ -85,8 +85,8 @@ struct Progress
         Color from_ = Color::hex("#7d56f4");
         Color to_ = Color::hex("#f38ba8");
         Style track_style_ = Style{}.fg(Color::hex("#45475a"));
-        std::string filled_ = "█";
-        std::string empty_ = "░";
+        Glyph filled_ = "█";
+        Glyph empty_ = "░";
         RendererFn renderer_;
     };
 };

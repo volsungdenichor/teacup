@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "teacup/canvas.hpp"
-#include "teacup/detail/utf8.hpp"
+#include "teacup/glyph.hpp"
 #include "teacup/style.hpp"
 
 namespace teacup
@@ -22,13 +22,13 @@ public:
 
     Table() = default;
 
-    Table& headers(std::vector<std::string> value)
+    Table& headers(std::vector<GlyphString> value)
     {
         headers_ = std::move(value);
         return *this;
     }
 
-    Table& rows(std::vector<std::vector<std::string>> value)
+    Table& rows(std::vector<std::vector<GlyphString>> value)
     {
         rows_ = std::move(value);
         return *this;
@@ -98,9 +98,12 @@ public:
     }
 
 private:
-    static std::string pad_to(std::string text, int width)
+    static GlyphString pad_to(GlyphString text, int width)
     {
-        text.append(static_cast<std::size_t>((std::max)(0, width - utf8::width(text))), ' ');
+        for (int w = text.width(); w < width; ++w)
+        {
+            text.push_back(Glyph{});
+        }
         return text;
     }
 
@@ -118,11 +121,11 @@ private:
         }
 
         std::vector<int> widths(column_count, 0);
-        auto update = [&](const std::vector<std::string>& values)
+        auto update = [&](const std::vector<GlyphString>& values)
         {
             for (std::size_t i = 0; i < values.size(); ++i)
             {
-                widths[i] = (std::max)(widths[i], static_cast<int>(utf8::width(values[i])));
+                widths[i] = (std::max)(widths[i], values[i].width());
             }
         };
 
@@ -135,28 +138,23 @@ private:
         return widths;
     }
 
-    [[nodiscard]] std::string render_row(const std::vector<std::string>& cells, const std::vector<int>& widths) const
+    [[nodiscard]] GlyphString render_row(const std::vector<GlyphString>& cells, const std::vector<int>& widths) const
     {
-        std::string line;
+        GlyphString line;
         for (std::size_t i = 0; i < cells.size(); ++i)
         {
-            std::string cell = cells[i];
             const int max_width = i < widths.size() ? widths[i] : 0;
-            if (max_width > 0)
-            {
-                cell = pad_to(GlyphString::from_utf8(cell).truncate(max_width).to_utf8(), max_width);
-            }
             if (!line.empty())
             {
-                line.push_back(' ');
+                line.push_back(Glyph{});
             }
-            line += cell;
+            line += max_width > 0 ? pad_to(cells[i].truncate(max_width), max_width) : cells[i];
         }
         return line;
     }
 
-    std::vector<std::string> headers_;
-    std::vector<std::vector<std::string>> rows_;
+    std::vector<GlyphString> headers_;
+    std::vector<std::vector<GlyphString>> rows_;
     Style header_style_ = Style{}.fg(Color::hex("#f38ba8")).add(Attr::bold);
     Style row_style_ = Style{}.fg(Color::hex("#cdd6f4"));
     RendererFn renderer_;

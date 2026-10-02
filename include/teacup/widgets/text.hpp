@@ -6,14 +6,14 @@
 #include <vector>
 
 #include "teacup/canvas.hpp"
-#include "teacup/detail/utf8.hpp"
+#include "teacup/glyph.hpp"
 
 namespace teacup
 {
 namespace widgets
 {
 
-std::vector<std::string> wrap_text(const std::string& text, int width);
+std::vector<GlyphString> wrap_text(const GlyphString& text, int width);
 
 class Text
 {
@@ -21,9 +21,9 @@ public:
     using RendererFn = std::function<void(Canvas)>;
 
     Text() = default;
-    explicit Text(std::string content) : content_{ std::move(content) } { }
+    explicit Text(GlyphString content) : content_{ std::move(content) } { }
 
-    Text& content(std::string value)
+    Text& content(GlyphString value)
     {
         content_ = std::move(value);
         return *this;
@@ -75,7 +75,7 @@ public:
         const int width = target.size().width;
         const int height = target.size().height;
 
-        const std::vector<std::string> rows = lines(width);
+        const std::vector<GlyphString> rows = lines(width);
         const int offset = align_offset(valign_, height, static_cast<int>(rows.size()));
         for (std::size_t i = 0; i < rows.size(); ++i)
         {
@@ -89,7 +89,7 @@ public:
     }
 
 private:
-    [[nodiscard]] std::vector<std::string> lines(int width) const
+    [[nodiscard]] std::vector<GlyphString> lines(int width) const
     {
         if (wrap_)
         {
@@ -98,7 +98,7 @@ private:
         return wrap_text(content_, 0);
     }
 
-    std::string content_{};
+    GlyphString content_{};
     Style style_{};
     Align align_ = Align::start;
     Align valign_ = Align::start;

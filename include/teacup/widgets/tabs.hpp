@@ -7,8 +7,8 @@
 #include <vector>
 
 #include "teacup/canvas.hpp"
-#include "teacup/detail/utf8.hpp"
 #include "teacup/event.hpp"
+#include "teacup/glyph.hpp"
 #include "teacup/style.hpp"
 
 namespace teacup
@@ -28,7 +28,7 @@ struct Tabs
     public:
         using RendererFn = std::function<void(const State&, Canvas)>;
 
-        View& labels(std::vector<std::string> value)
+        View& labels(std::vector<GlyphString> value)
         {
             labels_ = std::move(value);
             return *this;
@@ -99,7 +99,7 @@ struct Tabs
             int x = area.left();
             for (std::size_t i = 0; i < labels_.size(); ++i)
             {
-                const int width = utf8::width(label_text(i, static_cast<int>(i) == selected));
+                const int width = label_text(i, static_cast<int>(i) == selected).width();
                 rects.emplace_back(x, area.top(), width, 1);
                 x += width;
             }
@@ -133,12 +133,12 @@ struct Tabs
             return labels_.empty() ? 0 : std::clamp(state.selected, 0, static_cast<int>(labels_.size()) - 1);
         }
 
-        [[nodiscard]] std::string label_text(std::size_t index, bool active) const
+        [[nodiscard]] GlyphString label_text(std::size_t index, bool active) const
         {
             return active ? "[" + labels_[index] + "]" : " " + labels_[index] + " ";
         }
 
-        std::vector<std::string> labels_;
+        std::vector<GlyphString> labels_;
         Style tab_style_;
         Style selected_style_ = Style{}.bold().underline();
         RendererFn renderer_;

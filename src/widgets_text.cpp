@@ -5,16 +5,17 @@ namespace teacup
 namespace widgets
 {
 
-std::vector<std::string> wrap_text(const std::string& text, int width)
+std::vector<GlyphString> wrap_text(const GlyphString& text, int width)
 {
-    std::vector<std::string> lines;
-    std::string line;
+    const Glyph space{};
+    std::vector<GlyphString> lines;
+    GlyphString line;
     int line_width = 0;
-    std::string word;
+    GlyphString word;
     int word_width = 0;
 
-    const auto trim_trailing_spaces = [](std::string& value) {
-        while (!value.empty() && value.back() == ' ')
+    const auto trim_trailing_spaces = [&](GlyphString& value) {
+        while (!value.empty() && value.back() == space)
         {
             value.pop_back();
         }
@@ -46,22 +47,18 @@ std::vector<std::string> wrap_text(const std::string& text, int width)
         line_width = 0;
     };
 
-    std::size_t pos = 0;
-    while (pos < text.size())
+    for (const Glyph& glyph : text)
     {
-        const std::size_t end = utf8::next_grapheme(text, pos);
-        const std::string_view cluster{ text.data() + pos, end - pos };
-        pos = end;
-        if (cluster == "\n" || cluster == "\r\n")
+        if (glyph.utf8() == "\n" || glyph.utf8() == "\r\n")
         {
             flush_line();
             continue;
         }
-        const int cluster_width = utf8::grapheme_width(cluster);
-        if (cluster == " ")
+        const int glyph_width = glyph.width();
+        if (glyph == space)
         {
             flush_word();
-            if (width > 0 && line_width + cluster_width > width)
+            if (width > 0 && line_width + glyph_width > width)
             {
                 trim_trailing_spaces(line);
                 lines.push_back(line);
@@ -69,19 +66,19 @@ std::vector<std::string> wrap_text(const std::string& text, int width)
                 line_width = 0;
                 continue;  // swallow the space at a wrap point
             }
-            line += ' ';
-            line_width += cluster_width;
+            line.push_back(space);
+            line_width += glyph_width;
             continue;
         }
-        if (width > 0 && word_width + cluster_width > width)
+        if (width > 0 && word_width + glyph_width > width)
         {
             flush_word();  // single word longer than the line: hard break
             lines.push_back(line);
             line.clear();
             line_width = 0;
         }
-        word += cluster;
-        word_width += cluster_width;
+        word.push_back(glyph);
+        word_width += glyph_width;
     }
     flush_line();
 

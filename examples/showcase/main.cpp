@@ -370,7 +370,7 @@ void view(const Model& m, teacup::Canvas screen)
                                     m.events.focus().is("input") ? Style{}.fg(palette::surface()).bg(palette::accent())
                                                                  : Style{}.fg(palette::subtle()).bg(palette::surface()))
                                 .render(m.input, input_area.horizontal_slice(0));
-                            widgets::Text{ "> " + m.input.value.to_utf8() }
+                            widgets::Text{ "> " + m.input.value }
                                 .style(Style{}.fg(palette::subtle()))
                                 .render(input_area.horizontal_slice(1));
                             widgets::Text{ "mouse: " + m.last_mouse }

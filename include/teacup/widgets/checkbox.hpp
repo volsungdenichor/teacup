@@ -34,7 +34,7 @@ struct Checkbox
             return *this;
         }
 
-        View& glyphs(std::string checked, std::string unchecked)
+        View& glyphs(GlyphString checked, GlyphString unchecked)
         {
             checked_.glyph = std::move(checked);
             unchecked_.glyph = std::move(unchecked);
@@ -75,7 +75,7 @@ struct Checkbox
     private:
         struct StateInfo
         {
-            std::string glyph;
+            GlyphString glyph;
             Style style;
         };
         StateInfo checked_ = { "[+]", Style{}.fg(Color::hex("#a6e3a1")).bold() };

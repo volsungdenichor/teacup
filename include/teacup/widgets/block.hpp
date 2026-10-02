@@ -6,7 +6,7 @@
 
 #include "teacup/border.hpp"
 #include "teacup/canvas.hpp"
-#include "teacup/detail/utf8.hpp"
+#include "teacup/glyph.hpp"
 
 namespace teacup
 {
@@ -31,7 +31,7 @@ public:
         return *this;
     }
 
-    Block& title(std::string text)
+    Block& title(GlyphString text)
     {
         title_ = std::move(text);
         return *this;
@@ -131,16 +131,16 @@ private:
             target.horizontal_line(Point{ 1, h - 1 }, w - 2, border_.bottom, s);
             target.vertical_line(Point{ 0, 1 }, h - 2, border_.left, s);
             target.vertical_line(Point{ w - 1, 1 }, h - 2, border_.right, s);
-            target.put(Point{ 0, 0 }, Cell{ Glyph::from_utf8(border_.top_left), s });
-            target.put(Point{ w - 1, 0 }, Cell{ Glyph::from_utf8(border_.top_right), s });
-            target.put(Point{ 0, h - 1 }, Cell{ Glyph::from_utf8(border_.bottom_left), s });
-            target.put(Point{ w - 1, h - 1 }, Cell{ Glyph::from_utf8(border_.bottom_right), s });
+            target.put(Point{ 0, 0 }, Cell{ border_.top_left, s });
+            target.put(Point{ w - 1, 0 }, Cell{ border_.top_right, s });
+            target.put(Point{ 0, h - 1 }, Cell{ border_.bottom_left, s });
+            target.put(Point{ w - 1, h - 1 }, Cell{ border_.bottom_right, s });
         }
 
         if (!title_.empty() && w > 2)
         {
             const int available = w - 2;
-            const GlyphString title = GlyphString::from_utf8(title_).truncate(available);
+            const GlyphString title = title_.truncate(available);
             const int offset = 1 + align_offset(title_align_, available, title.width());
             target.text(Point{ offset, 0 }, title, title_style_);
         }
@@ -149,7 +149,7 @@ private:
     Border border_{};
     bool has_border_ = false;
     Style border_style_{};
-    std::string title_{};
+    GlyphString title_{};
     Style title_style_{};
     Align title_align_ = Align::start;
     int pad_left_ = 0;

@@ -16,6 +16,10 @@ class Glyph
 public:
     Glyph() = default;
 
+    // Implicit so literals like "─" can be passed wherever a Glyph is expected.
+    Glyph(const char* text) : Glyph{ from_utf8(text) } { }
+    Glyph(const std::string& text) : Glyph{ from_utf8(text) } { }
+
     // Takes the first grapheme cluster of `text`; empty text yields a continuation.
     static Glyph from_utf8(std::string_view text);
 
@@ -54,6 +58,10 @@ public:
     GlyphString() = default;
     explicit GlyphString(std::vector<Glyph> glyphs) : glyphs_{ std::move(glyphs) } { }
 
+    // Implicit so literals and std::string can be passed wherever a GlyphString is expected.
+    GlyphString(const char* text) : GlyphString{ from_utf8(text) } { }
+    GlyphString(const std::string& text) : GlyphString{ from_utf8(text) } { }
+
     static GlyphString from_utf8(std::string_view text);
     [[nodiscard]] std::string to_utf8() const;
 
@@ -72,6 +80,7 @@ public:
 
     const Glyph& operator[](std::size_t index) const { return glyphs_[index]; }
     Glyph& operator[](std::size_t index) { return glyphs_[index]; }
+    [[nodiscard]] const Glyph& back() const { return glyphs_.back(); }
 
     iterator begin() { return glyphs_.begin(); }
     iterator end() { return glyphs_.end(); }
@@ -79,8 +88,19 @@ public:
     [[nodiscard]] const_iterator end() const { return glyphs_.end(); }
 
     void push_back(const Glyph& glyph) { glyphs_.push_back(glyph); }
+    void pop_back() { glyphs_.pop_back(); }
+    void clear() { glyphs_.clear(); }
     iterator insert(const_iterator pos, const Glyph& glyph) { return glyphs_.insert(pos, glyph); }
     iterator erase(const_iterator pos) { return glyphs_.erase(pos); }
+
+    // Appends glyph-wise; does not re-segment across the seam.
+    GlyphString& operator+=(const GlyphString& other)
+    {
+        glyphs_.insert(glyphs_.end(), other.glyphs_.begin(), other.glyphs_.end());
+        return *this;
+    }
+
+    friend GlyphString operator+(GlyphString lhs, const GlyphString& rhs) { return lhs += rhs; }
 
     friend bool operator==(const GlyphString& lhs, const GlyphString& rhs) { return lhs.glyphs_ == rhs.glyphs_; }
     friend bool operator!=(const GlyphString& lhs, const GlyphString& rhs) { return !(lhs == rhs); }

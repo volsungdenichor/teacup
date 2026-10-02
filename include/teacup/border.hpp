@@ -1,20 +1,20 @@
 #pragma once
 
-#include <string>
+#include "teacup/glyph.hpp"
 
 namespace teacup
 {
 
 struct Border
 {
-    std::string top = "─";
-    std::string bottom = "─";
-    std::string left = "│";
-    std::string right = "│";
-    std::string top_left = "┌";
-    std::string top_right = "┐";
-    std::string bottom_left = "└";
-    std::string bottom_right = "┘";
+    Glyph top = "─";
+    Glyph bottom = "─";
+    Glyph left = "│";
+    Glyph right = "│";
+    Glyph top_left = "┌";
+    Glyph top_right = "┐";
+    Glyph bottom_left = "└";
+    Glyph bottom_right = "┘";
 
     static Border plain() { return {}; }
 

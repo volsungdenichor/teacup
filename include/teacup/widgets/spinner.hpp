@@ -26,7 +26,7 @@ struct Spinner
     public:
         using RendererFn = std::function<void(const State&, Canvas)>;
 
-        View& frames(std::vector<std::string> value)
+        View& frames(std::vector<GlyphString> value)
         {
             frames_ = std::move(value);
             return *this;
@@ -67,7 +67,7 @@ struct Spinner
         }
 
     private:
-        std::vector<std::string> frames_{ "|", "/", "-", "\\" };
+        std::vector<GlyphString> frames_{ "|", "/", "-", "\\" };
         Style style_;
         RendererFn renderer_;
     };

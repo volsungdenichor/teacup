@@ -27,16 +27,15 @@ public:
 
     void style_at(const Point& p, const Style& s);
 
-    int text(const Point& p, const std::string& value, const Style& s = {});
     int text(const Point& p, const GlyphString& value, const Style& s = {});
 
-    int text_aligned(int y, const std::string& value, Align a, const Style& s = {});
+    int text_aligned(int y, const GlyphString& value, Align a, const Style& s = {});
 
-    void fill(const Rect& area, const std::string& glyph = " ", const Style& s = {});
-    void fill(const std::string& glyph = " ", const Style& s = {}) { fill(bounds(), glyph, s); }
+    void fill(const Rect& area, const Glyph& glyph = Glyph{}, const Style& s = {});
+    void fill(const Glyph& glyph = Glyph{}, const Style& s = {}) { fill(bounds(), glyph, s); }
 
-    void horizontal_line(const Point& p, int length, const std::string& glyph, const Style& s = {});
-    void vertical_line(const Point& p, int length, const std::string& glyph, const Style& s = {});
+    void horizontal_line(const Point& p, int length, const Glyph& glyph, const Style& s = {});
+    void vertical_line(const Point& p, int length, const Glyph& glyph, const Style& s = {});
 
 private:
     // Writes `glyph` at column `x` of row `y` and advances `x`; false once the row is full.
