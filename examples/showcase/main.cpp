@@ -1,5 +1,7 @@
 #include <algorithm>
+#include <array>
 #include <chrono>
+#include <cmath>
 #include <functional>
 #include <string>
 #include <type_traits>
@@ -97,6 +99,250 @@ std::string country_name(Country country)
     return country == Country::usa ? "USA" : "Czech Republic";
 };
 
+// A tiny Wolfenstein-3D style world: '.' is floor, anything else is a wall type.
+const std::array<const char*, 12> world_map = {
+    "################",
+    "#......#.......#",
+    "#..2...#...3...#",
+    "#......#.......#",
+    "#.............1#",
+    "###.####.......#",
+    "#.......####.###",
+    "#..33...#......#",
+    "#.......#..2...#",
+    "#...........1..#",
+    "#.......#......#",
+    "################",
+};
+
+constexpr int world_width = 16;
+constexpr int world_height = static_cast<int>(world_map.size());
+constexpr double field_of_view_plane = 0.66;  // camera plane half-width; ~66 degree horizontal FOV
+constexpr double player_radius = 0.2;
+
+char world_at(int x, int y)
+{
+    if (x < 0 || y < 0 || x >= world_width || y >= world_height)
+    {
+        return '#';
+    }
+    return world_map[static_cast<std::size_t>(y)][x];
+}
+
+bool is_wall(double x, double y)
+{
+    return world_at(static_cast<int>(std::floor(x)), static_cast<int>(std::floor(y))) != '.';
+}
+
+struct Raycaster
+{
+    double x = 1.5;
+    double y = 4.5;
+    double angle = 0.15;  // radians; the map's y axis points down, so positive angles turn right
+    bool show_map = false;
+
+    void turn(double amount) { angle = std::remainder(angle + amount, 2.0 * M_PI); }
+
+    // Moves with axis-separated collision so the player slides along walls.
+    void move(double forward, double strafe)
+    {
+        const double dx = std::cos(angle) * forward - std::sin(angle) * strafe;
+        const double dy = std::sin(angle) * forward + std::cos(angle) * strafe;
+        const auto margin = [](double d) { return d > 0 ? player_radius : d < 0 ? -player_radius : 0.0; };
+        if (!is_wall(x + dx + margin(dx), y))
+        {
+            x += dx;
+        }
+        if (!is_wall(x, y + dy + margin(dy)))
+        {
+            y += dy;
+        }
+    }
+};
+
+struct RayHit
+{
+    double distance = 0.0;  // perpendicular to the camera plane, which avoids fish-eye distortion
+    char wall = '#';
+    bool vertical_face = false;  // hit a wall face parallel to the y axis
+    double face_offset = 0.0;    // 0..1 position of the hit along the wall face
+};
+
+// Classic DDA: step through the grid one cell boundary at a time until a wall is hit.
+RayHit cast_ray(double px, double py, double ray_x, double ray_y)
+{
+    int cell_x = static_cast<int>(std::floor(px));
+    int cell_y = static_cast<int>(std::floor(py));
+    const double delta_x = ray_x == 0.0 ? 1e30 : std::abs(1.0 / ray_x);
+    const double delta_y = ray_y == 0.0 ? 1e30 : std::abs(1.0 / ray_y);
+    const int step_x = ray_x < 0 ? -1 : 1;
+    const int step_y = ray_y < 0 ? -1 : 1;
+    double side_x = (ray_x < 0 ? px - cell_x : cell_x + 1.0 - px) * delta_x;
+    double side_y = (ray_y < 0 ? py - cell_y : cell_y + 1.0 - py) * delta_y;
+
+    RayHit hit;
+    for (int i = 0; i < 64; ++i)
+    {
+        if (side_x < side_y)
+        {
+            side_x += delta_x;
+            cell_x += step_x;
+            hit.vertical_face = true;
+        }
+        else
+        {
+            side_y += delta_y;
+            cell_y += step_y;
+            hit.vertical_face = false;
+        }
+        hit.wall = world_at(cell_x, cell_y);
+        if (hit.wall != '.')
+        {
+            break;
+        }
+    }
+    hit.distance = (std::max)(1e-3, hit.vertical_face ? side_x - delta_x : side_y - delta_y);
+    const double along = hit.vertical_face ? py + hit.distance * ray_y : px + hit.distance * ray_x;
+    hit.face_offset = along - std::floor(along);
+    return hit;
+}
+
+teacup::Color wall_color(char wall)
+{
+    switch (wall)
+    {
+        case '1': return teacup::Color::hex("#f38ba8");
+        case '2': return teacup::Color::hex("#a6e3a1");
+        case '3': return teacup::Color::hex("#f9e2af");
+        default: return teacup::Color::hex("#89b4fa");
+    }
+}
+
+teacup::Color shade_wall(const RayHit& hit)
+{
+    const teacup::Color fog = teacup::Color::hex("#11111b");
+    teacup::Color c = wall_color(hit.wall);
+    if (hit.vertical_face)
+    {
+        c = teacup::Color::mix(c, fog, 0.3);
+    }
+    if (hit.face_offset < 0.05 || hit.face_offset > 0.95)
+    {
+        c = teacup::Color::mix(c, fog, 0.5);  // dark seams between wall blocks
+    }
+    return teacup::Color::mix(c, fog, (std::min)(0.85, hit.distance / 10.0));
+}
+
+// Renders the first-person view into `c`, two square pixels per cell using upper half blocks.
+void draw_raycaster(const Raycaster& r, teacup::Canvas c)
+{
+    using namespace teacup;
+    const int width = c.size().width;
+    const int pixel_height = c.size().height * 2;
+    if (width <= 0 || pixel_height <= 0)
+    {
+        return;
+    }
+    const double dir_x = std::cos(r.angle);
+    const double dir_y = std::sin(r.angle);
+    const double plane_x = -dir_y * field_of_view_plane;
+    const double plane_y = dir_x * field_of_view_plane;
+    const double focal = (width / 2.0) / field_of_view_plane;
+    const double horizon = pixel_height / 2.0;
+
+    const auto backdrop = [&](int py)
+    {
+        if (py < horizon)
+        {
+            return Color::mix(Color::hex("#313244"), Color::hex("#181825"), py / horizon);
+        }
+        return Color::mix(Color::hex("#181825"), Color::hex("#585b70"), (py - horizon) / horizon);
+    };
+
+    for (int x = 0; x < width; ++x)
+    {
+        const double camera = 2.0 * (x + 0.5) / width - 1.0;
+        const RayHit hit = cast_ray(r.x, r.y, dir_x + plane_x * camera, dir_y + plane_y * camera);
+        const double wall_height = focal / hit.distance;
+        const double wall_top = horizon - wall_height / 2.0;
+        const double wall_bottom = horizon + wall_height / 2.0;
+        const Color wall = shade_wall(hit);
+        const auto pixel = [&](int py) { return py + 0.5 >= wall_top && py + 0.5 < wall_bottom ? wall : backdrop(py); };
+        for (int row = 0; row < c.size().height; ++row)
+        {
+            c.put(Point{ x, row }, Cell{ Glyph{ "▀" }, Style{}.fg(pixel(2 * row)).bg(pixel(2 * row + 1)) });
+        }
+    }
+
+    if (r.show_map)
+    {
+        const int facing_x = static_cast<int>(std::floor(r.x + dir_x));
+        const int facing_y = static_cast<int>(std::floor(r.y + dir_y));
+        const auto map_pixel = [&](int mx, int my)
+        {
+            if (mx == static_cast<int>(r.x) && my == static_cast<int>(r.y))
+            {
+                return Color::hex("#ffffff");
+            }
+            const char cell = world_at(mx, my);
+            if (cell != '.')
+            {
+                return Color::mix(wall_color(cell), Color::hex("#11111b"), 0.3);
+            }
+            return mx == facing_x && my == facing_y ? palette::accent() : Color::hex("#11111b");
+        };
+        for (int row = 0; row < (world_height + 1) / 2; ++row)
+        {
+            for (int mx = 0; mx < world_width; ++mx)
+            {
+                c.put(
+                    Point{ mx, row },
+                    Cell{ Glyph{ "▀" }, Style{}.fg(map_pixel(mx, 2 * row)).bg(map_pixel(mx, 2 * row + 1)) });
+            }
+        }
+    }
+}
+
+// Applies a raycaster control key; returns false for keys it does not handle.
+bool steer(Raycaster& r, const teacup::KeyEvent& key)
+{
+    constexpr double step = 0.25;
+    constexpr double turn = M_PI / 16.0;
+    if (key.matches_any({ "w", "up" }))
+    {
+        r.move(step, 0.0);
+    }
+    else if (key.matches_any({ "s", "down" }))
+    {
+        r.move(-step, 0.0);
+    }
+    else if (key.matches_any({ "a", "left" }))
+    {
+        r.turn(-turn);
+    }
+    else if (key.matches_any({ "d", "right" }))
+    {
+        r.turn(turn);
+    }
+    else if (key.matches("q"))
+    {
+        r.move(0.0, -step);
+    }
+    else if (key.matches("e"))
+    {
+        r.move(0.0, step);
+    }
+    else if (key.matches("m"))
+    {
+        r.show_map = !r.show_map;
+    }
+    else
+    {
+        return false;
+    }
+    return true;
+}
+
 struct Model
 {
     int tick = 0;
@@ -106,9 +352,9 @@ struct Model
     std::string last_mouse = "-";
     teacup::widgets::List<std::string>::State menu;
     teacup::widgets::Tabs::State tabs;
-    teacup::widgets::TextInput::State input;
     teacup::widgets::Viewport::State viewport;
     teacup::widgets::DrawingArea::State drawing;
+    Raycaster raycaster;
     teacup::widgets::Spinner::State spinner;
     teacup::widgets::List<Person>::State people;
 };
@@ -173,19 +419,7 @@ teacup::layout::Node showcase_tree()
                         column(
                             {
                                 fixed(1, leaf("progress")),
-                                flex(row(
-                                    {
-                                        percent(50, leaf("table")),
-                                        flex(block_layout("drawing-box", input_block(), focusable("drawing"))),
-                                    },
-                                    1)),
-                                fixed(5, block_layout(
-                                    "input-box",
-                                    input_block(),
-                                    column({
-                                        fixed(1, focusable("input")),
-                                        flex(space()),
-                                    }))),
+                                flex(block_layout("drawing-box", input_block(), focusable("drawing"))),
                             },
                             1))),
                 },
@@ -212,62 +446,17 @@ void render_player(
         .render(widgets::Checkbox::State{ person.living }, row.horizontal_slice(2).indent(8));
 }
 
-constexpr teacup::Size drawing_content_size{ 72, 24 };
+// Below this size the 3D view keeps its resolution and the drawing area scrolls over it.
+constexpr teacup::Size min_render_size{ 32, 8 };
 
-// Drawn in content coordinates; the drawing area scrolls this scene inside its window.
-void draw_scene(teacup::Canvas c)
-{
-    using namespace teacup;
-    const Size size = c.size();
-    for (int y = 0; y < size.height; y += 4)
-    {
-        for (int x = 0; x < size.width; ++x)
-        {
-            c.put(Point{ x, y }, Cell{ Glyph{ x % 8 == 0 ? "+" : "·" }, Style{}.fg(palette::subtle()).dim() });
-        }
-        for (int x = 0; x < size.width; x += 8)
-        {
-            c.text(Point{ x + 1, y }, std::to_string(x) + "," + std::to_string(y), Style{}.fg(palette::subtle()));
-        }
-    }
-
-    widgets::Block{}
-        .border(Border::rounded())
-        .border_style(Style{}.fg(palette::accent()))
-        .title(" origin ")
-        .title_style(Style{}.fg(palette::accent()).bold())
-        .render(
-            c.sub(Rect{ 2, 1, 20, 5 }),
-            [](Canvas inner)
-            {
-                widgets::Text{ "scroll me: wheel," }.style(Style{}.fg(palette::text())).render(inner.horizontal_slice(0));
-                widgets::Text{ "shift+wheel, arrows" }.style(Style{}.fg(palette::text())).render(inner.horizontal_slice(1));
-                widgets::Text{ "pgup/pgdn, home/end" }.style(Style{}.fg(palette::text())).render(inner.horizontal_slice(2));
-            });
-
-    for (int x = 0; x < size.width; ++x)
-    {
-        const double t = static_cast<double>(x) / (std::max)(1, size.width - 1);
-        c.put(Point{ x, 10 }, Cell{ Glyph{ "▀" }, Style{}.fg(Color::mix(palette::accent(), palette::success(), t)) });
-    }
-
-    widgets::Block{}
-        .border(Border::thick())
-        .border_style(Style{}.fg(palette::warning()))
-        .title(" far east ")
-        .render(c.sub(Rect{ 44, 13, 24, 5 }), [](Canvas inner) { inner.text(Point{ 1, 1 }, "東の果て 🍵", Style{}.fg(palette::text())); });
-
-    c.text(
-        Point{ size.width - 22, size.height - 1 }, "you found the corner!", Style{}.fg(palette::danger()).bold());
-}
-
-teacup::widgets::DrawingArea::View drawing_view(const teacup::Size& viewport)
+teacup::widgets::DrawingArea::View drawing_view(const Raycaster& raycaster, const teacup::Size& viewport)
 {
     return teacup::widgets::DrawingArea::View{}
-        .content_size(drawing_content_size)
+        .content_size(teacup::Size{ (std::max)(viewport.width, min_render_size.width),
+                                    (std::max)(viewport.height, min_render_size.height) })
         .viewport_size(viewport)
         .background(teacup::Style{}.bg(teacup::palette::surface()))
-        .draw(draw_scene);
+        .draw([&raycaster](teacup::Canvas c) { draw_raycaster(raycaster, c); });
 }
 
 teacup::Cmd tick()
@@ -284,21 +473,15 @@ teacup::UpdateResult<Model> update(Model m, const teacup::Message& message)
 {
     const teacup::widgets::List<std::string>::View menu_view;
     teacup::widgets::Tabs::View tabs_view;
-    const teacup::widgets::TextInput::View input_view;
     const teacup::widgets::Viewport::View viewport_view;
     teacup::widgets::List<Person>::View people_view;
     const teacup::layout::Areas areas = teacup::layout::resolve(showcase_tree(), teacup::Rect::from_size(m.screen_size));
     people_view.item_height(3).viewport_height(areas.get("people").height());
-    const teacup::widgets::DrawingArea::View scene_view = drawing_view(areas.get("drawing").size());
+    const teacup::widgets::DrawingArea::View scene_view = drawing_view(m.raycaster, areas.get("drawing").size());
 
-    const auto sync_menu_to_focus = [&]
-    {
-        const std::string& f = m.events.focus().focused();
-        m.menu.selected = f == "input" ? 1 : f == "people" ? 2 : 0;
-    };
     const auto activate_menu = [&]
     {
-        m.events.focus().set(m.menu.selected == 1 ? "input" : m.menu.selected == 2 ? "people" : "menu");
+        m.events.focus().set(m.menu.selected == 1 ? "drawing" : m.menu.selected == 2 ? "people" : "menu");
     };
 
     m.events.clear();
@@ -307,8 +490,6 @@ teacup::UpdateResult<Model> update(Model m, const teacup::Message& message)
     m.events.add("tabs", teacup::route_mouse(m.tabs, tabs_view.labels({ "gallery", "layout", "events" }), "tabs"));
     m.events.add("people", teacup::route_keys(m.people, people_view));
     m.events.add("people", teacup::route_mouse(m.people, people_view, "people"));
-    m.events.add("input", teacup::route_keys(m.input, input_view));
-    m.events.add("input", teacup::route_mouse(m.input, input_view, "input"));
     m.events.add("drawing", teacup::route_keys(m.drawing, scene_view));
     m.events.add("drawing", teacup::route_mouse(m.drawing, scene_view, "drawing"));
 
@@ -353,16 +534,6 @@ teacup::UpdateResult<Model> update(Model m, const teacup::Message& message)
         return teacup::next(m, tick());
     }
 
-    if (const auto* paste = teacup::msg_cast<teacup::PasteEvent>(message))
-    {
-        if (m.events.focus().is("input"))
-        {
-            input_view.update(m.input, *paste);
-        }
-
-        return teacup::next(m);
-    }
-
     if (const auto* key = teacup::msg_cast<teacup::KeyEvent>(message))
     {
         m.last_key = key->name();
@@ -372,6 +543,10 @@ teacup::UpdateResult<Model> update(Model m, const teacup::Message& message)
         }
 
         const std::string was_focused = m.events.focus().focused();
+        if (was_focused == "drawing" && steer(m.raycaster, *key))
+        {
+            return teacup::next(m);
+        }
         const bool consumed = m.events.route(message, areas);
 
         if (key->code == teacup::Key::enter)
@@ -382,7 +557,7 @@ teacup::UpdateResult<Model> update(Model m, const teacup::Message& message)
             }
             else
             {
-                m.menu.selected = was_focused == "input" ? 1 : was_focused == "people" ? 2 : 0;
+                m.menu.selected = was_focused == "drawing" ? 1 : was_focused == "people" ? 2 : 0;
                 m.events.focus().set("menu");
             }
             return teacup::next(m);
@@ -415,22 +590,6 @@ teacup::UpdateResult<Model> update(Model m, const teacup::Message& message)
             {
                 viewport_view.page_down(m.viewport, 4);
             }
-            return teacup::next(m);
-        }
-
-        if (!consumed && m.events.focus().is("menu") && m.menu.selected == 1
-            && (key->code
-                | any(
-                    teacup::Key::character,
-                    teacup::Key::space,
-                    teacup::Key::backspace,
-                    teacup::Key::del,
-                    teacup::Key::home,
-                    teacup::Key::end)))
-        {
-            m.events.focus().set("input");
-            sync_menu_to_focus();
-            input_view.update(m.input, *key);
             return teacup::next(m);
         }
     }
@@ -514,48 +673,22 @@ void view(const Model& m, teacup::Canvas screen)
                         widgets::Progress::State{ (m.tick % 100) / 99.0 },
                         content.sub_absolute(areas.get("progress")));
 
-                widgets::Table{}
-                    .headers({ "widget", "state" })
-                    .rows({ { "list", "ready" }, { "viewport", "scrolling" }, { "tabs", "selectable" } })
-                    .header_style(Style{}.fg(palette::accent()).bold())
-                    .row_style(Style{}.fg(palette::text()))
-                    .render(content.sub_absolute(areas.get("table")));
-
                 const bool drawing_focused = m.events.focus().is("drawing");
-                const Point scroll = drawing_view(areas.get("drawing").size())
+                const Point scroll = drawing_view(m.raycaster, areas.get("drawing").size())
                                          .visible_offset(m.drawing, areas.get("drawing").size());
+                std::string title = drawing_focused ? " raycaster · wasd/arrows · q/e · m map " : " raycaster ";
+                if (scroll != Point{})
+                {
+                    title += "@" + std::to_string(scroll.x) + "," + std::to_string(scroll.y) + " ";
+                }
                 input_block()
                     .border_style(Style{}.fg(drawing_focused ? palette::accent() : palette::subtle()))
-                    .title(" drawing " + std::to_string(scroll.x) + "," + std::to_string(scroll.y) + " ")
+                    .title(title)
                     .title_style(Style{}.fg(drawing_focused ? palette::accent() : palette::subtle()))
                     .render(
                         content.sub_absolute(areas.get("drawing-box")),
                         [&](Canvas drawing_area)
-                        {
-                            drawing_view(drawing_area.size()).render(m.drawing, drawing_area);
-                        });
-
-                input_block()
-                    .border_style(Style{}.fg(palette::subtle()))
-                    .title(m.events.focus().is("input") ? " edit me [active] " : " edit me ")
-                    .title_style(Style{}.fg(m.events.focus().is("input") ? palette::accent() : palette::subtle()))
-                    .render(
-                        content.sub_absolute(areas.get("input-box")),
-                        [&](Canvas input_area)
-                        {
-                            widgets::TextInput::View{}
-                                .text_style(Style{}.fg(palette::text()))
-                                .cursor_style(
-                                    m.events.focus().is("input") ? Style{}.fg(palette::surface()).bg(palette::accent())
-                                                                 : Style{}.fg(palette::subtle()).bg(palette::surface()))
-                                .render(m.input, input_area.horizontal_slice(0));
-                            widgets::Text{ "> " + m.input.value }
-                                .style(Style{}.fg(palette::subtle()))
-                                .render(input_area.horizontal_slice(1));
-                            widgets::Text{ "mouse: " + m.last_mouse }
-                                .style(Style{}.fg(palette::subtle()))
-                                .render(input_area.horizontal_slice(2));
-                        });
+                        { drawing_view(m.raycaster, drawing_area.size()).render(m.drawing, drawing_area); });
             });
 
     widgets::Text{ "arrows select · enter activate · tab/shift+tab focus · ctrl+c quit" }
@@ -569,10 +702,8 @@ void view(const Model& m, teacup::Canvas screen)
 int main()
 {
     Model model;
-    model.menu.items = { "overview", "text input", "people", "table", "progress" };
+    model.menu.items = { "overview", "raycaster", "people", "table", "progress" };
     model.tabs.selected = 0;
-    model.input.value = teacup::GlyphString::from_utf8("type here");
-    model.input.cursor = model.input.value.size();
     model.viewport.lines = { "viewport", "scrollable", "content", "lives", "inside", "a", "small", "window" };
     model.people.items = {
         { "John Wayne", Country::usa, false },     { "Alain Delon", Country::france, false },
