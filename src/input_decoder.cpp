@@ -100,15 +100,15 @@ Modifier csi_modifiers(int param)
     Modifier mods = Modifier::none;
     if (bits & 1)
     {
-        mods = mods | Modifier::shift;
+        mods |= Modifier::shift;
     }
     if (bits & 2)
     {
-        mods = mods | Modifier::alt;
+        mods |= Modifier::alt;
     }
     if (bits & 4)
     {
-        mods = mods | Modifier::ctrl;
+        mods |= Modifier::ctrl;
     }
     return mods;
 }
@@ -207,15 +207,15 @@ bool decode_sgr_mouse(const std::string& params, char final_byte, Message& out)
     ev.position = Point{ values[1] - 1, values[2] - 1 };
     if (code & 4)
     {
-        ev.modifiers = ev.modifiers | Modifier::shift;
+        ev.modifiers |= Modifier::shift;
     }
     if (code & 8)
     {
-        ev.modifiers = ev.modifiers | Modifier::alt;
+        ev.modifiers |= Modifier::alt;
     }
     if (code & 16)
     {
-        ev.modifiers = ev.modifiers | Modifier::ctrl;
+        ev.modifiers |= Modifier::ctrl;
     }
 
     if (code & 64)

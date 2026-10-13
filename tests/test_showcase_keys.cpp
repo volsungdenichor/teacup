@@ -13,10 +13,10 @@ namespace
 Model fresh_model()
 {
     Model initial;
-    initial.menu.items = { "overview", "text input", "players", "table", "progress" };
+    initial.menu.items = { "overview", "text input", "people", "table", "progress" };
     initial.input.value = GlyphString::from_utf8("type here");
     initial.input.cursor = initial.input.value.size();
-    initial.players.items = {
+    initial.people.items = {
         { "Name: McEnroe", Country::usa, true },
         { "Name: Agassi", Country::usa, true },
         { "Name: Navratilova", Country::czech_republic, true },
@@ -33,7 +33,7 @@ TEST_CASE("showcase update(): focus starts on the menu hub")
     CHECK(m.events.focus().focused() == "menu");
 }
 
-TEST_CASE("showcase update(): arrows navigate hub, enter activates players, arrows move it")
+TEST_CASE("showcase update(): arrows navigate hub, enter activates people, arrows move it")
 {
     Model m = fresh_model();
     auto step = [&](KeyEvent k) { m = update(std::move(m), Message{ k }).model; };
@@ -44,22 +44,22 @@ TEST_CASE("showcase update(): arrows navigate hub, enter activates players, arro
     INFO("after down1: focused=" << m.events.focus().focused() << " menu.sel=" << m.menu.selected);
     step(KeyEvent{ Key::down });
     INFO("after down2: focused=" << m.events.focus().focused() << " menu.sel=" << m.menu.selected);
-    CHECK(m.menu.selected == 2);  // "players"
+    CHECK(m.menu.selected == 2);  // "people"
 
     step(KeyEvent{ Key::enter });
     INFO("after enter: focused=" << m.events.focus().focused());
-    CHECK(m.events.focus().focused() == "players");
+    CHECK(m.events.focus().focused() == "people");
 
     step(KeyEvent{ Key::down });
-    CHECK(m.players.selected == 1);
+    CHECK(m.people.selected == 1);
     step(KeyEvent{ Key::down });
-    CHECK(m.players.selected == 2);
+    CHECK(m.people.selected == 2);
     step(KeyEvent{ Key::up });
-    CHECK(m.players.selected == 1);
+    CHECK(m.people.selected == 1);
 
     step(KeyEvent{ Key::enter });  // back out to the hub
     CHECK(m.events.focus().focused() == "menu");
-    CHECK(m.menu.selected == 2);    // hub mirrors where we came from
+    CHECK(m.menu.selected == 2);  // hub mirrors where we came from
 }
 
 TEST_CASE("showcase update(): tab cycles focus")
@@ -80,16 +80,14 @@ TEST_CASE("showcase update(): mouse click focuses and selects a player")
     m = update(std::move(m), Message{ KeyEvent{ Key::none } }).model;  // establish ring
 
     const layout::Areas areas = layout::resolve(showcase_tree(), Rect::from_size(m.screen_size));
-    const Rect players = areas.get("players");
-    m.players.offset = 1;  // the area fits a single 3-row item, so scroll to show the second one
+    const Rect people = areas.get("people");
+    m.people.offset = 1;  // the area fits a single 3-row item, so scroll to show the second one
 
-    const auto click = Point{ players.left() + 1, players.top() + 1 };
-    m = update(std::move(m),
-               Message{ MouseEvent{ click, MouseButton::left, MouseAction::press } })
-            .model;
+    const auto click = Point{ people.left() + 1, people.top() + 1 };
+    m = update(std::move(m), Message{ MouseEvent{ click, MouseButton::left, MouseAction::press } }).model;
 
-    CHECK(m.events.focus().focused() == "players");
-    CHECK(m.players.selected == 1);
+    CHECK(m.events.focus().focused() == "people");
+    CHECK(m.people.selected == 1);
 }
 
 TEST_CASE("showcase update(): text input receives keys when focused")
@@ -112,4 +110,41 @@ TEST_CASE("showcase update(): text input receives keys when focused")
     step(KeyEvent{ Key::enter });  // back out to the hub
     CHECK(m.events.focus().focused() == "menu");
     CHECK(m.menu.selected == 1);
+}
+
+TEST_CASE("showcase layout: blocks and event areas agree across screen sizes")
+{
+    for (const Size size : { Size{ 80, 24 }, Size{ 120, 40 }, Size{ 32, 12 }, Size{ 4, 3 } })
+    {
+        Model m = fresh_model();
+        m = update(std::move(m), Message{ ResizeEvent{ size } }).model;
+        CHECK(m.screen_size == size);
+        const layout::Areas areas = layout::resolve(showcase_tree(), Rect::from_size(size));
+        Surface frame{ size };
+        view(m, Canvas{ frame });
+
+        for (const std::string id :
+            { "title", "spinner", "tabs", "menu", "people", "progress", "table", "input-box", "input" })
+        {
+            const std::string* parent = areas.parent(id);
+            REQUIRE(parent != nullptr);
+            const Rect outer = areas.get(*parent);
+            const widgets::Block block = *parent == "input-box" ? input_block() : panel_block();
+            const Rect inner = block.inner(outer).intersect(outer);
+            CHECK(areas.get(id).intersect(inner) == areas.get(id));
+        }
+
+        const Rect input = areas.get("input");
+        if (!input.empty())
+        {
+            CHECK(input.height() == 1);
+            CHECK(frame.at(input.origin()).glyph.utf8() == "t");
+            m = update(std::move(m), Message{ MouseEvent{
+                input.origin(), MouseButton::left, MouseAction::press } }).model;
+            CHECK(m.events.focus().focused() == "input");
+            const Point preview = input.origin() + Point{ 0, 1 };
+            REQUIRE(areas.hit(preview) != nullptr);
+            CHECK(*areas.hit(preview) != "input");
+        }
+    }
 }

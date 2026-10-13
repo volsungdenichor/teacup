@@ -121,6 +121,16 @@ same tree drives `update` (event dispatch) and `view` (painting), so the two
 can never disagree about where a widget lives. Resolution is pure integer
 math; the tree owns no canvas or widget state.
 
+Container content can be resolved with `layout::within(content_area, children)`.
+The callback takes the container's absolute `Rect` and returns its content
+rectangle, clipped to the container. Capture a geometry-only `widgets::Block`
+by value and use `Block::inner` so layout and rendering share border/padding
+configuration. `Canvas::sub_absolute(rect)` consumes the resulting surface-space
+rectangles while preserving the parent canvas's clipping; `Canvas::sub(rect)`
+continues to use local coordinates. Event routing uses the same resolved
+`layout::Areas`. The showcase demonstrates this for all nested blocks and
+limits the input event area to the actual editor row, excluding preview text.
+
 `focus` adds centralized focus management on top: a `focus_ring` owns the
 tab order and current focus (as layout ids), a `widget_traits` lookup marks
 widgets enabled/disabled and focusable (disabled implies not focusable; both

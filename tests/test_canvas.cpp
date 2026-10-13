@@ -50,6 +50,21 @@ TEST_CASE("block reserves border and padding")
     CHECK(s.row_text(2) == "+----+");
 }
 
+TEST_CASE("absolute sub canvas uses surface coordinates and preserves parent clipping")
+{
+    Surface s{ Size{ 12, 8 } };
+    Canvas content = Canvas{ s }.sub(Rect{ 3, 2, 5, 4 });
+    Canvas child = content.sub_absolute(Rect{ 2, 3, 8, 2 });
+
+    CHECK(child.size() == Size{ 5, 2 });
+    child.fill("x");
+    CHECK(s.row_text(2) == "            ");
+    CHECK(s.row_text(3) == "   xxxxx    ");
+    CHECK(s.row_text(4) == "   xxxxx    ");
+    CHECK(s.row_text(5) == "            ");
+    CHECK_FALSE(content.sub_absolute(Rect{ 0, 0, 2, 2 }).valid());
+}
+
 TEST_CASE("block title is centered inside the top border")
 {
     Surface s{ Size{ 9, 3 } };

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <initializer_list>
 #include <stdexcept>
 #include <string>
@@ -23,15 +24,17 @@ struct Node
         leaf,    ///< terminal node
         row,     ///< children side by side (horizontal split)
         column,  ///< children stacked (vertical split)
-        inset    ///< single child shrunk by `margin` on every side
+        inset,   ///< single child shrunk by `margin` on every side
+        within   ///< single child laid out in a container's content rectangle
     };
 
     Kind type = Kind::leaf;
     std::string id;               ///< when non-empty, the node's rect is registered in `areas`
     bool focusable = false;       ///< when true, the id joins the tab order in `areas::focus_order`
-    std::vector<Child> children;  ///< row/column children; inset uses the first child
+    std::vector<Child> children;  ///< row/column children; inset/within use the first child
     int gap = 0;                  ///< row/column: cells between children
     int margin = 0;               ///< inset: cells shaved off each side
+    std::function<Rect(const Rect&)> content_area;
 };
 
 struct Child
@@ -77,6 +80,20 @@ inline Node inset(int margin, Node content)
     n.type = Node::Kind::inset;
     n.margin = margin;
     n.children.push_back(Child{ Constraint::flex(), std::move(content) });  // sizing is unused
+    return n;
+}
+
+/// Resolves children inside a pure surface-space content rectangle, preserving its clip.
+inline Node within(std::function<Rect(const Rect&)> content_area, Node content)
+{
+    if (!content_area)
+    {
+        throw std::invalid_argument("teacup layout: content area function is empty");
+    }
+    Node n;
+    n.type = Node::Kind::within;
+    n.content_area = std::move(content_area);
+    n.children.push_back(Child{ Constraint::flex(), std::move(content) });
     return n;
 }
 
@@ -181,7 +198,8 @@ public:
 private:
     friend Areas resolve(const Node& root, const Rect& screen);
 
-    static void resolve_node(const Node& n, const Rect& area, Areas& out, const std::string& enclosing);
+    static void resolve_node(
+        const Node& n, const Rect& area, Areas& out, const std::string& enclosing, const Rect* clip = nullptr);
 
     std::vector<value_type> entries_;
     std::vector<std::pair<std::string, std::string>> parents_;  // id → enclosing named id ("" at the root)
@@ -196,8 +214,10 @@ inline Areas resolve(const Node& root, const Rect& screen)
     return result;
 }
 
-inline void Areas::resolve_node(const Node& n, const Rect& area, Areas& out, const std::string& enclosing)
+inline void Areas::resolve_node(
+    const Node& n, const Rect& requested, Areas& out, const std::string& enclosing, const Rect* clip)
 {
+    const Rect area = clip ? requested.intersect(*clip) : requested;
     std::string innermost = enclosing;
     if (!n.id.empty())
     {
@@ -215,7 +235,18 @@ inline void Areas::resolve_node(const Node& n, const Rect& area, Areas& out, con
         case Node::Kind::inset:
             if (!n.children.empty())
             {
-                resolve_node(n.children.front().content, area.inset(n.margin), out, innermost);
+                resolve_node(n.children.front().content, area.inset(n.margin), out, innermost, clip);
+            }
+            break;
+        case Node::Kind::within:
+            if (!n.children.empty())
+            {
+                if (!n.content_area)
+                {
+                    throw std::invalid_argument("teacup layout: content area function is empty");
+                }
+                const Rect content = n.content_area(area).intersect(area);
+                resolve_node(n.children.front().content, content, out, innermost, &content);
             }
             break;
         case Node::Kind::row:
@@ -231,7 +262,7 @@ inline void Areas::resolve_node(const Node& n, const Rect& area, Areas& out, con
                                                                       : split_vertical(area, constraints, n.gap);
             for (std::size_t i = 0; i < n.children.size(); ++i)
             {
-                resolve_node(n.children[i].content, rects[i], out, innermost);
+                resolve_node(n.children[i].content, rects[i], out, innermost, clip);
             }
             break;
         }

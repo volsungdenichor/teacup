@@ -1,6 +1,9 @@
 #include <algorithm>
 #include <chrono>
+#include <functional>
 #include <string>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 #include "teacup/teacup.hpp"
@@ -12,13 +15,77 @@ struct TickMessage
 {
 };
 
+template <class T, class Pred, class = void>
+struct IsEqualityComparable : std::false_type
+{
+};
+
+template <class T, class Pred>
+struct IsEqualityComparable<T, Pred, std::void_t<decltype(std::declval<const T&>() == std::declval<const Pred&>())>>
+    : std::is_convertible<decltype(std::declval<const T&>() == std::declval<const Pred&>()), bool>
+{
+};
+
+template <class Pred, class T>
+bool matches(const T& item, const Pred& pred)
+{
+    if constexpr (IsEqualityComparable<T, Pred>::value)
+    {
+        return item == pred;
+    }
+    else if constexpr (std::is_invocable_r_v<bool, const Pred&, const T&>)
+    {
+        return std::invoke(pred, item);
+    }
+    else
+    {
+        static_assert(
+            std::is_invocable_r_v<bool, const Pred&, const T&>,
+            "matches requires equality comparison or a predicate returning a value convertible to bool");
+    }
+}
+
+struct Any
+{
+    template <class... Preds>
+    struct Impl
+    {
+        std::tuple<Preds...> preds;
+
+        template <class T>
+        bool operator()(const T& item) const
+        {
+            return std::apply([&item](const Preds&... preds) { return (matches(item, preds) || ...); }, preds);
+        }
+
+        template <class T>
+        bool friend operator|(const T& item, const Impl& impl)
+        {
+            return impl(item);
+        }
+    };
+
+    template <class... Preds>
+    auto operator()(Preds... preds) const
+    {
+        return Impl<Preds...>{ std::make_tuple(std::move(preds)...) };
+    }
+};
+
+constexpr inline auto any = Any{};
+
 enum class Country
 {
     usa,
-    czech_republic
+    czech_republic,
+    france,
+    poland,
+    italy,
+    uk,
+    sweden,
 };
 
-struct Player
+struct Person
 {
     std::string name;
     Country country;
@@ -42,8 +109,28 @@ struct Model
     teacup::widgets::TextInput::State input;
     teacup::widgets::Viewport::State viewport;
     teacup::widgets::Spinner::State spinner;
-    teacup::widgets::List<Player>::State players;
+    teacup::widgets::List<Person>::State people;
 };
+
+teacup::widgets::Block panel_block()
+{
+    return teacup::widgets::Block{}.border(teacup::Border::rounded()).padding(1);
+}
+
+teacup::widgets::Block input_block()
+{
+    return teacup::widgets::Block{}.border(teacup::Border::plain()).padding(0);
+}
+
+teacup::layout::Node block_layout(
+    std::string id, teacup::widgets::Block block, teacup::layout::Node content)
+{
+    return teacup::layout::named(
+        std::move(id),
+        teacup::layout::within(
+            [block = std::move(block)](const teacup::Rect& area) { return block.inner(area); },
+            std::move(content)));
+}
 
 teacup::layout::Node showcase_tree()
 {
@@ -52,46 +139,49 @@ teacup::layout::Node showcase_tree()
         {
             fixed(
                 7,
-                named(
+                block_layout(
                     "header",
-                    inset(
-                        2,
-                        column(
-                            {
-                                fixed(
-                                    1,
-                                    row({
-                                        flex(leaf("title")),
-                                        fixed(14, leaf("spinner")),
-                                    })),
-                                flex(space()),
-                                fixed(1, focusable("tabs")),
-                            })))),
+                    panel_block(),
+                    column(
+                        {
+                            fixed(
+                                1,
+                                row({
+                                    flex(leaf("title")),
+                                    fixed(14, leaf("spinner")),
+                                })),
+                            flex(space()),
+                            fixed(1, focusable("tabs")),
+                        }))),
             flex(row(
                 {
                     percent(
                         42,
-                        named(
+                        block_layout(
                             "navigation",
-                            inset(
-                                2,
-                                column(
-                                    {
-                                        fixed(6, focusable("menu")),
-                                        flex(focusable("players")),
-                                    },
-                                    1)))),
-                    flex(named(
-                        "components",
-                        inset(
-                            2,
+                            panel_block(),
                             column(
                                 {
-                                    fixed(1, leaf("progress")),
-                                    fixed(4, leaf("table")),
-                                    fixed(5, named("input-box", inset(1, focusable("input")))),
+                                    fixed(6, focusable("menu")),
+                                    flex(focusable("people")),
                                 },
-                                1)))),
+                                1))),
+                    flex(block_layout(
+                        "components",
+                        panel_block(),
+                        column(
+                            {
+                                fixed(1, leaf("progress")),
+                                fixed(4, leaf("table")),
+                                fixed(5, block_layout(
+                                    "input-box",
+                                    input_block(),
+                                    column({
+                                        fixed(1, focusable("input")),
+                                        flex(space()),
+                                    }))),
+                            },
+                            1))),
                 },
                 1)),
             fixed(1, leaf("footer")),
@@ -99,13 +189,13 @@ teacup::layout::Node showcase_tree()
 }
 
 void render_player(
-    const Player& player, teacup::Canvas row, const teacup::Style&, const teacup::widgets::ListItemState& state)
+    const Person& person, teacup::Canvas row, const teacup::Style&, const teacup::widgets::ListItemState& state)
 {
     using namespace teacup;
-    widgets::Text{ player.name }
+    widgets::Text{ person.name }
         .style(Style{}.fg(state.selected ? palette::accent() : palette::text()).bold())
         .render(row.horizontal_slice(0));
-    widgets::Text{ "Country: " + country_name(player.country) }
+    widgets::Text{ "Country: " + country_name(person.country) }
         .style(Style{}.fg(palette::subtle()))
         .render(row.horizontal_slice(1));
 
@@ -113,7 +203,7 @@ void render_player(
     widgets::Checkbox::View{}
         .checked_style(Style{}.fg(palette::success()).bold())
         .unchecked_style(Style{}.fg(palette::danger()))
-        .render(widgets::Checkbox::State{ player.living }, row.horizontal_slice(2).indent(8));
+        .render(widgets::Checkbox::State{ person.living }, row.horizontal_slice(2).indent(8));
 }
 
 teacup::Cmd tick()
@@ -132,26 +222,26 @@ teacup::UpdateResult<Model> update(Model m, const teacup::Message& message)
     teacup::widgets::Tabs::View tabs_view;
     const teacup::widgets::TextInput::View input_view;
     const teacup::widgets::Viewport::View viewport_view;
-    teacup::widgets::List<Player>::View players_view;
+    teacup::widgets::List<Person>::View people_view;
     const teacup::layout::Areas areas = teacup::layout::resolve(showcase_tree(), teacup::Rect::from_size(m.screen_size));
-    players_view.item_height(3).viewport_height(areas.get("players").height());
+    people_view.item_height(3).viewport_height(areas.get("people").height());
 
     const auto sync_menu_to_focus = [&]
     {
         const std::string& f = m.events.focus().focused();
-        m.menu.selected = f == "input" ? 1 : f == "players" ? 2 : 0;
+        m.menu.selected = f == "input" ? 1 : f == "people" ? 2 : 0;
     };
     const auto activate_menu = [&]
     {
-        m.events.focus().set(m.menu.selected == 1 ? "input" : m.menu.selected == 2 ? "players" : "menu");
+        m.events.focus().set(m.menu.selected == 1 ? "input" : m.menu.selected == 2 ? "people" : "menu");
     };
 
     m.events.clear();
     m.events.add("menu", teacup::route_keys(m.menu, menu_view));
     m.events.add("tabs", teacup::route_keys(m.tabs, tabs_view));
     m.events.add("tabs", teacup::route_mouse(m.tabs, tabs_view.labels({ "gallery", "layout", "events" }), "tabs"));
-    m.events.add("players", teacup::route_keys(m.players, players_view));
-    m.events.add("players", teacup::route_mouse(m.players, players_view, "players"));
+    m.events.add("people", teacup::route_keys(m.people, people_view));
+    m.events.add("people", teacup::route_mouse(m.people, people_view, "people"));
     m.events.add("input", teacup::route_keys(m.input, input_view));
     m.events.add("input", teacup::route_mouse(m.input, input_view, "input"));
 
@@ -169,15 +259,15 @@ teacup::UpdateResult<Model> update(Model m, const teacup::Message& message)
         {
             activate_menu();  // clicking a menu row jumps focus to it
         }
-        viewport_view.update(m.viewport, *mouse, areas.get("players"));
+        viewport_view.update(m.viewport, *mouse, areas.get("people"));
         if (mouse->action == teacup::MouseAction::press && mouse->button == teacup::MouseButton::left)
         {
-            const teacup::Rect players_area = areas.get("players");
-            const int item = players_view.item_at(m.players, mouse->position, players_area);
-            if (item >= 0 && (mouse->position.y - players_area.top()) % 3 == 2)
+            const teacup::Rect area = areas.get("people");
+            const int item = people_view.item_at(m.people, mouse->position, area);
+            if (item >= 0 && (mouse->position.y - area.top()) % 3 == 2)
             {
-                m.players.items[static_cast<std::size_t>(item)].living
-                    = !m.players.items[static_cast<std::size_t>(item)].living;
+                m.people.items[static_cast<std::size_t>(item)].living
+                    = !m.people.items[static_cast<std::size_t>(item)].living;
             }
         }
         return teacup::next(m);
@@ -225,7 +315,7 @@ teacup::UpdateResult<Model> update(Model m, const teacup::Message& message)
             }
             else
             {
-                m.menu.selected = was_focused == "input" ? 1 : was_focused == "players" ? 2 : 0;
+                m.menu.selected = was_focused == "input" ? 1 : was_focused == "people" ? 2 : 0;
                 m.events.focus().set("menu");
             }
             return teacup::next(m);
@@ -233,9 +323,9 @@ teacup::UpdateResult<Model> update(Model m, const teacup::Message& message)
 
         if (key->code == teacup::Key::page_up)
         {
-            if (was_focused == "players")
+            if (was_focused == "people")
             {
-                players_view.page_up(m.players, areas.get("players").height());
+                people_view.page_up(m.people, areas.get("people").height());
             }
             else
             {
@@ -245,16 +335,26 @@ teacup::UpdateResult<Model> update(Model m, const teacup::Message& message)
         }
         if (key->code == teacup::Key::page_down)
         {
-            if (was_focused == "players")
-                players_view.page_down(m.players, areas.get("players").height());
+            if (was_focused == "people")
+            {
+                people_view.page_down(m.people, areas.get("people").height());
+            }
             else
+            {
                 viewport_view.page_down(m.viewport, 4);
+            }
             return teacup::next(m);
         }
 
         if (!consumed && m.events.focus().is("menu") && m.menu.selected == 1
-            && (key->code == teacup::Key::character || key->code == teacup::Key::space || key->code == teacup::Key::backspace
-                || key->code == teacup::Key::del || key->code == teacup::Key::home || key->code == teacup::Key::end))
+            && (key->code
+                | any(
+                    teacup::Key::character,
+                    teacup::Key::space,
+                    teacup::Key::backspace,
+                    teacup::Key::del,
+                    teacup::Key::home,
+                    teacup::Key::end)))
         {
             m.events.focus().set("input");
             sync_menu_to_focus();
@@ -272,20 +372,18 @@ void view(const Model& m, teacup::Canvas screen)
     screen.fill(" ", Style{}.bg(palette::surface()));
     const layout::Areas areas = layout::resolve(showcase_tree(), screen.bounds());
 
-    widgets::Block{}
-        .border(Border::rounded())
+    panel_block()
         .border_style(Style{}.fg(palette::accent()))
         .title(" teacup widget gallery ")
         .title_style(Style{}.fg(palette::accent()).bold())
         .title_align(Align::center)
-        .padding(1)
         .render(
             screen.sub(areas.get("header")),
-            [&](Canvas)
+            [&](Canvas content)
             {
                 widgets::Text{ "A small, living tour of the teacup toolkit" }
                     .style(Style{}.fg(palette::text()).bold())
-                    .render(screen.sub(areas.get("title")));
+                    .render(content.sub_absolute(areas.get("title")));
                 widgets::Spinner::View{}
                     .frames(
                         { "⠋ live",
@@ -299,71 +397,66 @@ void view(const Model& m, teacup::Canvas screen)
                           "⠇ live",
                           "⠏ live" })
                     .style(Style{}.fg(palette::accent()))
-                    .render(m.spinner, screen.sub(areas.get("spinner")));
+                    .render(m.spinner, content.sub_absolute(areas.get("spinner")));
                 widgets::Tabs::View{}
                     .labels({ "gallery", "layout", "events" })
                     .tab_style(Style{}.fg(palette::subtle()))
                     .selected_style(Style{}.fg(palette::text()).bg(palette::accent()).bold())
-                    .render(m.tabs, screen.sub(areas.get("tabs")));
+                    .render(m.tabs, content.sub_absolute(areas.get("tabs")));
             });
 
-    widgets::Block{}
-        .border(Border::rounded())
+    panel_block()
         .border_style(Style{}.fg(palette::subtle()))
-        .title(" navigation · players offset: " + std::to_string(m.players.offset) + " ")
+        .title(" navigation · people offset: " + std::to_string(m.people.offset) + " ")
         .title_style(Style{}.fg(palette::subtle()))
-        .padding(1)
         .render(
             screen.sub(areas.get("navigation")),
-            [&](Canvas)
+            [&](Canvas content)
             {
                 widgets::List<std::string>::View{}
                     .selected_style(
                         !m.events.focus().is("menu") ? Style{}.fg(palette::accent()).bold()
                                                      : Style{}.fg(palette::surface()).bg(palette::accent()).bold())
                     .item_style(Style{}.fg(palette::text()))
-                    .render(m.menu, screen.sub(areas.get("menu")));
+                    .render(m.menu, content.sub_absolute(areas.get("menu")));
 
-                widgets::List<Player>::View{}
+                widgets::List<Person>::View{}
                     .item_height(3)
                     .selected_style(Style{}.bg(Color::hex("#313244")))
                     .item_style(Style{}.fg(palette::text()))
                     .item_renderer(render_player)
-                    .render(m.players, screen.sub(areas.get("players")));
+                    .render(m.people, content.sub_absolute(areas.get("people")));
             });
 
-    widgets::Block{}
-        .border(Border::rounded())
+    panel_block()
         .border_style(Style{}.fg(palette::subtle()))
         .title(" components ")
         .title_style(Style{}.fg(palette::subtle()))
-        .padding(1)
         .render(
             screen.sub(areas.get("components")),
-            [&](Canvas)
+            [&](Canvas content)
             {
                 widgets::Progress::View{}
                     .gradient(palette::accent(), Color::hex("#43bf6d"))
-                    .render(widgets::Progress::State{ (m.tick % 100) / 99.0 }, screen.sub(areas.get("progress")));
+                    .render(
+                        widgets::Progress::State{ (m.tick % 100) / 99.0 },
+                        content.sub_absolute(areas.get("progress")));
 
                 widgets::Table{}
                     .headers({ "widget", "state" })
                     .rows({ { "list", "ready" }, { "viewport", "scrolling" }, { "tabs", "selectable" } })
                     .header_style(Style{}.fg(palette::accent()).bold())
                     .row_style(Style{}.fg(palette::text()))
-                    .render(screen.sub(areas.get("table")));
+                    .render(content.sub_absolute(areas.get("table")));
 
-                widgets::Block{}
-                    .border(Border::plain())
+                input_block()
                     .border_style(Style{}.fg(palette::subtle()))
                     .title(m.events.focus().is("input") ? " edit me [active] " : " edit me ")
                     .title_style(Style{}.fg(m.events.focus().is("input") ? palette::accent() : palette::subtle()))
-                    .padding(0)
                     .render(
-                        screen.sub(areas.get("input-box")),
-                        [&](Canvas)
+                        content.sub_absolute(areas.get("input-box")),
+                        [&](Canvas input_area)
                         {
-                            const Canvas input_area = screen.sub(areas.get("input"));
                             widgets::TextInput::View{}
                                 .text_style(Style{}.fg(palette::text()))
                                 .cursor_style(
@@ -389,22 +482,22 @@ void view(const Model& m, teacup::Canvas screen)
 
 int main()
 {
-    Model initial;
-    initial.menu.items = { "overview", "text input", "players", "table", "progress" };
-    initial.tabs.selected = 0;
-    initial.input.value = teacup::GlyphString::from_utf8("type here");
-    initial.input.cursor = initial.input.value.size();
-    initial.viewport.lines = { "viewport", "scrollable", "content", "lives", "inside", "a", "small", "window" };
-    initial.players.items = {
-        { "Name: McEnroe", Country::usa, true },
-        { "Name: Agassi", Country::usa, true },
-        { "Name: Navratilova", Country::czech_republic, true },
-        { "Name: Mrtvy", Country::czech_republic, false },
-        { "Name: Deadmeat", Country::usa, false },
+    Model model;
+    model.menu.items = { "overview", "text input", "people", "table", "progress" };
+    model.tabs.selected = 0;
+    model.input.value = teacup::GlyphString::from_utf8("type here");
+    model.input.cursor = model.input.value.size();
+    model.viewport.lines = { "viewport", "scrollable", "content", "lives", "inside", "a", "small", "window" };
+    model.people.items = {
+        { "John Wayne", Country::usa, false },     { "Alain Delon", Country::france, false },
+        { "Al Pacino", Country::usa, true },       { "Robert De Niro", Country::usa, true },
+        { "Marilyn Monroe", Country::usa, false }, { "Sophia Loren", Country::italy, true },
+        { "Clint Eastwood", Country::usa, true },  { "Charlton Heston", Country::usa, false },
+        { "Audrey Hepburn", Country::uk, false },  { "Ingrid Bergman", Country::sweden, false },
     };
 
     teacup::Options options;
     options.alt_screen = true;
     options.mouse = true;
-    return teacup::run(teacup::make_app(initial, init, update, view), options);
+    return teacup::run(teacup::make_app(model, init, update, view), options);
 }

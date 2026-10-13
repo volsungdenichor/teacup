@@ -7,7 +7,12 @@ Canvas::Canvas(Surface& target, Rect area) : target_{ &target }, area_{ area.int
 
 Canvas Canvas::sub(const Rect& area) const
 {
-    return Canvas{ *target_, area.moved(area_.origin()).intersect(area_) };
+    return sub_absolute(area.moved(area_.origin()));
+}
+
+Canvas Canvas::sub_absolute(const Rect& area) const
+{
+    return Canvas{ *target_, area.intersect(area_) };
 }
 
 Canvas Canvas::horizontal_slice(int y, int height) const

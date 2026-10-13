@@ -56,6 +56,12 @@ constexpr Modifier operator|(Modifier lhs, Modifier rhs)
 {
     return static_cast<Modifier>(static_cast<std::uint8_t>(lhs) | static_cast<std::uint8_t>(rhs));
 }
+constexpr Modifier& operator|=(Modifier& lhs, Modifier rhs)
+{
+    lhs = lhs | rhs;
+    return lhs;
+}
+
 constexpr bool has(Modifier set, Modifier flag)
 {
     return (static_cast<std::uint8_t>(set) & static_cast<std::uint8_t>(flag)) != 0;

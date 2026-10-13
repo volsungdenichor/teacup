@@ -3,6 +3,7 @@
 #include <stdexcept>
 
 #include "teacup/layout_tree.hpp"
+#include "teacup/widgets/block.hpp"
 
 using namespace teacup;
 
@@ -120,4 +121,52 @@ TEST_CASE("focusable leaves surface a tab order")
     CHECK(areas.focus_order()[0] == "body");
     CHECK(areas.focus_order()[1] == "status");  // a container can be a tab stop
     CHECK(areas.focus_order()[2] == "ok");
+}
+
+TEST_CASE("container content layout matches block rendering with asymmetric padding")
+{
+    using namespace layout;
+    const widgets::Block block = widgets::Block{}.border(Border::ascii()).padding(2, 1, 3, 0);
+    const Node tree = named("panel", within(
+        [block](const Rect& area) { return block.inner(area); },
+        column({ fixed(1, focusable("editor")), flex(leaf("body")) })));
+
+    for (const Size size : { Size{ 24, 12 }, Size{ 9, 5 }, Size{ 3, 2 } })
+    {
+        Surface s{ size };
+        const Rect outer{ 1, 1, size.width - 1, size.height - 1 };
+        const Areas areas = resolve(tree, outer);
+        const Rect inner = block.inner(outer).intersect(outer);
+
+        CHECK(areas.get("editor").intersect(inner) == areas.get("editor"));
+        CHECK(areas.get("body").intersect(inner) == areas.get("body"));
+        REQUIRE(areas.parent("editor") != nullptr);
+        CHECK(*areas.parent("editor") == "panel");
+        CHECK(areas.focus_order() == std::vector<std::string>{ "editor" });
+
+        bool rendered = false;
+        block.render(Canvas{ s }.sub_absolute(outer), [&](Canvas content) {
+            rendered = true;
+            CHECK(content.size() == inner.size());
+            const Rect editor = areas.get("editor");
+            content.sub_absolute(editor).fill("x");
+            if (!editor.empty())
+            {
+                CHECK(s.at(editor.origin()).glyph.utf8() == "x");
+                REQUIRE(areas.hit(editor.origin()) != nullptr);
+                CHECK(*areas.hit(editor.origin()) == "editor");
+            }
+        });
+        CHECK(rendered == !inner.empty());
+    }
+}
+
+TEST_CASE("container content layout clips its rectangle and rejects empty callbacks")
+{
+    using namespace layout;
+    const Rect outer{ 4, 3, 10, 5 };
+    const Areas areas = resolve(
+        within([](const Rect&) { return Rect{ 0, 0, 30, 20 }; }, leaf("content")), outer);
+    CHECK(areas.get("content") == outer);
+    CHECK_THROWS_AS(within({}, leaf("content")), std::invalid_argument);
 }
