@@ -99,40 +99,42 @@ std::string country_name(Country country)
     return country == Country::usa ? "USA" : "Czech Republic";
 };
 
-// A tiny Wolfenstein-3D style world: '.' is floor, anything else is a wall type.
-const std::array<const char*, 12> world_map = {
-    "################",
-    "#......#.......#",
-    "#..2...#...3...#",
-    "#......#.......#",
-    "#.............1#",
-    "###.####.......#",
-    "#.......####.###",
-    "#..33...#......#",
-    "#.......#..2...#",
-    "#...........1..#",
-    "#.......#......#",
-    "################",
-};
-
-constexpr int world_width = 16;
-constexpr int world_height = static_cast<int>(world_map.size());
-constexpr double field_of_view_plane = 0.66;  // camera plane half-width; ~66 degree horizontal FOV
-constexpr double player_radius = 0.2;
-
-char world_at(int x, int y)
+struct World
 {
-    if (x < 0 || y < 0 || x >= world_width || y >= world_height)
+    static const inline std::array<std::string, 12> world_map = {
+        "################",  //
+        "#......#.......#",  //
+        "#..2...#...3...#",  //
+        "#......#.......#",  //
+        "#.............1#",  //
+        "###.####.......#",  //
+        "#.......####.###",  //
+        "#..33...#......#",  //
+        "#.......#..2...#",  //
+        "#...........1..#",  //
+        "#.......#......#",  //
+        "################",
+    };
+
+    static const inline int world_width = world_map[0].size();
+    static const inline int world_height = static_cast<int>(world_map.size());
+    static const inline double field_of_view_plane = 0.66;  // camera plane half-width; ~66 degree horizontal FOV
+    static const inline double player_radius = 0.2;
+
+    char at(int x, int y) const
     {
-        return '#';
+        if (x < 0 || y < 0 || x >= world_width || y >= world_height)
+        {
+            return '#';
+        }
+        return world_map[static_cast<std::size_t>(y)][x];
     }
-    return world_map[static_cast<std::size_t>(y)][x];
-}
 
-bool is_wall(double x, double y)
-{
-    return world_at(static_cast<int>(std::floor(x)), static_cast<int>(std::floor(y))) != '.';
-}
+    bool is_wall(double x, double y) const
+    {
+        return at(static_cast<int>(std::floor(x)), static_cast<int>(std::floor(y))) != '.';
+    }
+};
 
 struct Raycaster
 {
@@ -144,16 +146,16 @@ struct Raycaster
     void turn(double amount) { angle = std::remainder(angle + amount, 2.0 * M_PI); }
 
     // Moves with axis-separated collision so the player slides along walls.
-    void move(double forward, double strafe)
+    void move(double forward, double strafe, const World& world)
     {
         const double dx = std::cos(angle) * forward - std::sin(angle) * strafe;
         const double dy = std::sin(angle) * forward + std::cos(angle) * strafe;
-        const auto margin = [](double d) { return d > 0 ? player_radius : d < 0 ? -player_radius : 0.0; };
-        if (!is_wall(x + dx + margin(dx), y))
+        const auto margin = [&](double d) { return d > 0 ? world.player_radius : d < 0 ? -world.player_radius : 0.0; };
+        if (!world.is_wall(x + dx + margin(dx), y))
         {
             x += dx;
         }
-        if (!is_wall(x, y + dy + margin(dy)))
+        if (!world.is_wall(x, y + dy + margin(dy)))
         {
             y += dy;
         }
@@ -169,7 +171,7 @@ struct RayHit
 };
 
 // Classic DDA: step through the grid one cell boundary at a time until a wall is hit.
-RayHit cast_ray(double px, double py, double ray_x, double ray_y)
+RayHit cast_ray(double px, double py, double ray_x, double ray_y, const World& world)
 {
     int cell_x = static_cast<int>(std::floor(px));
     int cell_y = static_cast<int>(std::floor(py));
@@ -195,7 +197,7 @@ RayHit cast_ray(double px, double py, double ray_x, double ray_y)
             cell_y += step_y;
             hit.vertical_face = false;
         }
-        hit.wall = world_at(cell_x, cell_y);
+        hit.wall = world.at(cell_x, cell_y);
         if (hit.wall != '.')
         {
             break;
@@ -234,7 +236,7 @@ teacup::Color shade_wall(const RayHit& hit)
 }
 
 // Renders the first-person view into `c`, two square pixels per cell using upper half blocks.
-void draw_raycaster(const Raycaster& r, teacup::Canvas c)
+void draw_raycaster(const Raycaster& r, teacup::Canvas c, const World& world)
 {
     using namespace teacup;
     const int width = c.size().width;
@@ -245,9 +247,9 @@ void draw_raycaster(const Raycaster& r, teacup::Canvas c)
     }
     const double dir_x = std::cos(r.angle);
     const double dir_y = std::sin(r.angle);
-    const double plane_x = -dir_y * field_of_view_plane;
-    const double plane_y = dir_x * field_of_view_plane;
-    const double focal = (width / 2.0) / field_of_view_plane;
+    const double plane_x = -dir_y * world.field_of_view_plane;
+    const double plane_y = dir_x * world.field_of_view_plane;
+    const double focal = (width / 2.0) / world.field_of_view_plane;
     const double horizon = pixel_height / 2.0;
 
     const auto backdrop = [&](int py)
@@ -262,7 +264,7 @@ void draw_raycaster(const Raycaster& r, teacup::Canvas c)
     for (int x = 0; x < width; ++x)
     {
         const double camera = 2.0 * (x + 0.5) / width - 1.0;
-        const RayHit hit = cast_ray(r.x, r.y, dir_x + plane_x * camera, dir_y + plane_y * camera);
+        const RayHit hit = cast_ray(r.x, r.y, dir_x + plane_x * camera, dir_y + plane_y * camera, world);
         const double wall_height = focal / hit.distance;
         const double wall_top = horizon - wall_height / 2.0;
         const double wall_bottom = horizon + wall_height / 2.0;
@@ -284,16 +286,16 @@ void draw_raycaster(const Raycaster& r, teacup::Canvas c)
             {
                 return Color::hex("#ffffff");
             }
-            const char cell = world_at(mx, my);
+            const char cell = world.at(mx, my);
             if (cell != '.')
             {
                 return Color::mix(wall_color(cell), Color::hex("#11111b"), 0.3);
             }
             return mx == facing_x && my == facing_y ? palette::accent() : Color::hex("#11111b");
         };
-        for (int row = 0; row < (world_height + 1) / 2; ++row)
+        for (int row = 0; row < (world.world_height + 1) / 2; ++row)
         {
-            for (int mx = 0; mx < world_width; ++mx)
+            for (int mx = 0; mx < world.world_width; ++mx)
             {
                 c.put(
                     Point{ mx, row },
@@ -304,17 +306,17 @@ void draw_raycaster(const Raycaster& r, teacup::Canvas c)
 }
 
 // Applies a raycaster control key; returns false for keys it does not handle.
-bool steer(Raycaster& r, const teacup::KeyEvent& key)
+bool steer(Raycaster& r, const teacup::KeyEvent& key, const World& world)
 {
     constexpr double step = 0.25;
     constexpr double turn = M_PI / 16.0;
     if (key.matches_any({ "w", "up" }))
     {
-        r.move(step, 0.0);
+        r.move(step, 0.0, world);
     }
     else if (key.matches_any({ "s", "down" }))
     {
-        r.move(-step, 0.0);
+        r.move(-step, 0.0, world);
     }
     else if (key.matches_any({ "a", "left" }))
     {
@@ -326,11 +328,11 @@ bool steer(Raycaster& r, const teacup::KeyEvent& key)
     }
     else if (key.matches("q"))
     {
-        r.move(0.0, -step);
+        r.move(0.0, -step, world);
     }
     else if (key.matches("e"))
     {
-        r.move(0.0, step);
+        r.move(0.0, step, world);
     }
     else if (key.matches("m"))
     {
@@ -369,14 +371,12 @@ teacup::widgets::Block input_block()
     return teacup::widgets::Block{}.border(teacup::Border::plain()).padding(0);
 }
 
-teacup::layout::Node block_layout(
-    std::string id, teacup::widgets::Block block, teacup::layout::Node content)
+teacup::layout::Node block_layout(std::string id, teacup::widgets::Block block, teacup::layout::Node content)
 {
     return teacup::layout::named(
         std::move(id),
         teacup::layout::within(
-            [block = std::move(block)](const teacup::Rect& area) { return block.inner(area); },
-            std::move(content)));
+            [block = std::move(block)](const teacup::Rect& area) { return block.inner(area); }, std::move(content)));
 }
 
 teacup::layout::Node showcase_tree()
@@ -449,14 +449,17 @@ void render_player(
 // Below this size the 3D view keeps its resolution and the drawing area scrolls over it.
 constexpr teacup::Size min_render_size{ 32, 8 };
 
+const auto world = World{};
+
 teacup::widgets::DrawingArea::View drawing_view(const Raycaster& raycaster, const teacup::Size& viewport)
 {
     return teacup::widgets::DrawingArea::View{}
-        .content_size(teacup::Size{ (std::max)(viewport.width, min_render_size.width),
-                                    (std::max)(viewport.height, min_render_size.height) })
+        .content_size(
+            teacup::Size{ (std::max)(viewport.width, min_render_size.width),
+                          (std::max)(viewport.height, min_render_size.height) })
         .viewport_size(viewport)
         .background(teacup::Style{}.bg(teacup::palette::surface()))
-        .draw([&raycaster](teacup::Canvas c) { draw_raycaster(raycaster, c); });
+        .draw([&raycaster](teacup::Canvas c) { draw_raycaster(raycaster, c, world); });
 }
 
 teacup::Cmd tick()
@@ -543,7 +546,7 @@ teacup::UpdateResult<Model> update(Model m, const teacup::Message& message)
         }
 
         const std::string was_focused = m.events.focus().focused();
-        if (was_focused == "drawing" && steer(m.raycaster, *key))
+        if (was_focused == "drawing" && steer(m.raycaster, *key, world))
         {
             return teacup::next(m);
         }
@@ -669,9 +672,7 @@ void view(const Model& m, teacup::Canvas screen)
             {
                 widgets::Progress::View{}
                     .gradient(palette::accent(), Color::hex("#43bf6d"))
-                    .render(
-                        widgets::Progress::State{ (m.tick % 100) / 99.0 },
-                        content.sub_absolute(areas.get("progress")));
+                    .render(widgets::Progress::State{ (m.tick % 100) / 99.0 }, content.sub_absolute(areas.get("progress")));
 
                 const bool drawing_focused = m.events.focus().is("drawing");
                 const Point scroll = drawing_view(m.raycaster, areas.get("drawing").size())
