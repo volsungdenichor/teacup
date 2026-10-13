@@ -9,6 +9,7 @@ FetchContent_MakeAvailable(Catch2)
 add_executable(teacup_tests
     test_canvas.cpp
     test_color.cpp
+    test_drawing_area.cpp
     test_focus.cpp
     test_glyph.cpp
     test_input_decoder.cpp

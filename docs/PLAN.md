@@ -149,7 +149,8 @@ does not set an explicit order.
 - `style` helpers: `bold`, `dim`, `italic`, `underline`, `reverse`, `strikethrough`.
 - Widgets: `block` (border/title/padding), `text` (wrap + align), `spinner`,
   `progress` (gradient fill), `list`, `table`, `viewport`, `text_input`, `tabs`,
-  `status_bar`.
+  `drawing_area` (free-form content drawn in its own coordinates, scrolled
+  within the widget), `status_bar`.
 
 ## 6. Milestones
 

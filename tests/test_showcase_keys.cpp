@@ -124,12 +124,22 @@ TEST_CASE("showcase layout: blocks and event areas agree across screen sizes")
         view(m, Canvas{ frame });
 
         for (const std::string id :
-            { "title", "spinner", "tabs", "menu", "people", "progress", "table", "input-box", "input" })
+            { "title",
+              "spinner",
+              "tabs",
+              "menu",
+              "people",
+              "progress",
+              "table",
+              "input-box",
+              "input",
+              "drawing-box",
+              "drawing" })
         {
             const std::string* parent = areas.parent(id);
             REQUIRE(parent != nullptr);
             const Rect outer = areas.get(*parent);
-            const widgets::Block block = *parent == "input-box" ? input_block() : panel_block();
+            const widgets::Block block = *parent == "input-box" || *parent == "drawing-box" ? input_block() : panel_block();
             const Rect inner = block.inner(outer).intersect(outer);
             CHECK(areas.get(id).intersect(inner) == areas.get(id));
         }
@@ -147,4 +157,32 @@ TEST_CASE("showcase layout: blocks and event areas agree across screen sizes")
             CHECK(*areas.hit(preview) != "input");
         }
     }
+}
+
+TEST_CASE("showcase update(): drawing area scrolls with the wheel and keys once focused")
+{
+    Model m = fresh_model();
+    m = update(std::move(m), Message{ ResizeEvent{ Size{ 120, 40 } } }).model;
+    m = update(std::move(m), Message{ KeyEvent{ Key::none } }).model;
+    const layout::Areas areas = layout::resolve(showcase_tree(), Rect::from_size(m.screen_size));
+    const Rect drawing = areas.get("drawing");
+    REQUIRE_FALSE(drawing.empty());
+
+    m = update(std::move(m), Message{ MouseEvent{ drawing.origin(), MouseButton::wheel_down } }).model;
+    CHECK(m.drawing.offset == Point{ 0, 1 });
+
+    m = update(std::move(m), Message{ MouseEvent{ drawing.origin(), MouseButton::left, MouseAction::press } }).model;
+    REQUIRE(m.events.focus().focused() == "drawing");
+    m = update(std::move(m), Message{ KeyEvent{ Key::right } }).model;
+    CHECK(m.drawing.offset == Point{ 1, 1 });
+    m = update(std::move(m), Message{ KeyEvent{ Key::page_down } }).model;
+    CHECK(m.drawing.offset.y == (std::min)(1 + drawing.height(), drawing_content_size.height - drawing.height()));
+    CHECK(m.viewport.offset == 0);
+
+    m = update(std::move(m), Message{ KeyEvent{ Key::home } }).model;
+    CHECK(m.drawing.offset == Point{ 0, 0 });
+    Surface frame{ m.screen_size };
+    view(m, Canvas{ frame });
+    CHECK(frame.at(drawing.origin()).glyph.utf8() == "+");
+    CHECK(frame.at(drawing.origin() + Point{ 1, 0 }).glyph.utf8() == "0");
 }

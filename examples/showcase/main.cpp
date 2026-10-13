@@ -108,6 +108,7 @@ struct Model
     teacup::widgets::Tabs::State tabs;
     teacup::widgets::TextInput::State input;
     teacup::widgets::Viewport::State viewport;
+    teacup::widgets::DrawingArea::State drawing;
     teacup::widgets::Spinner::State spinner;
     teacup::widgets::List<Person>::State people;
 };
@@ -172,7 +173,12 @@ teacup::layout::Node showcase_tree()
                         column(
                             {
                                 fixed(1, leaf("progress")),
-                                fixed(4, leaf("table")),
+                                flex(row(
+                                    {
+                                        percent(50, leaf("table")),
+                                        flex(block_layout("drawing-box", input_block(), focusable("drawing"))),
+                                    },
+                                    1)),
                                 fixed(5, block_layout(
                                     "input-box",
                                     input_block(),
@@ -206,6 +212,64 @@ void render_player(
         .render(widgets::Checkbox::State{ person.living }, row.horizontal_slice(2).indent(8));
 }
 
+constexpr teacup::Size drawing_content_size{ 72, 24 };
+
+// Drawn in content coordinates; the drawing area scrolls this scene inside its window.
+void draw_scene(teacup::Canvas c)
+{
+    using namespace teacup;
+    const Size size = c.size();
+    for (int y = 0; y < size.height; y += 4)
+    {
+        for (int x = 0; x < size.width; ++x)
+        {
+            c.put(Point{ x, y }, Cell{ Glyph{ x % 8 == 0 ? "+" : "·" }, Style{}.fg(palette::subtle()).dim() });
+        }
+        for (int x = 0; x < size.width; x += 8)
+        {
+            c.text(Point{ x + 1, y }, std::to_string(x) + "," + std::to_string(y), Style{}.fg(palette::subtle()));
+        }
+    }
+
+    widgets::Block{}
+        .border(Border::rounded())
+        .border_style(Style{}.fg(palette::accent()))
+        .title(" origin ")
+        .title_style(Style{}.fg(palette::accent()).bold())
+        .render(
+            c.sub(Rect{ 2, 1, 20, 5 }),
+            [](Canvas inner)
+            {
+                widgets::Text{ "scroll me: wheel," }.style(Style{}.fg(palette::text())).render(inner.horizontal_slice(0));
+                widgets::Text{ "shift+wheel, arrows" }.style(Style{}.fg(palette::text())).render(inner.horizontal_slice(1));
+                widgets::Text{ "pgup/pgdn, home/end" }.style(Style{}.fg(palette::text())).render(inner.horizontal_slice(2));
+            });
+
+    for (int x = 0; x < size.width; ++x)
+    {
+        const double t = static_cast<double>(x) / (std::max)(1, size.width - 1);
+        c.put(Point{ x, 10 }, Cell{ Glyph{ "▀" }, Style{}.fg(Color::mix(palette::accent(), palette::success(), t)) });
+    }
+
+    widgets::Block{}
+        .border(Border::thick())
+        .border_style(Style{}.fg(palette::warning()))
+        .title(" far east ")
+        .render(c.sub(Rect{ 44, 13, 24, 5 }), [](Canvas inner) { inner.text(Point{ 1, 1 }, "東の果て 🍵", Style{}.fg(palette::text())); });
+
+    c.text(
+        Point{ size.width - 22, size.height - 1 }, "you found the corner!", Style{}.fg(palette::danger()).bold());
+}
+
+teacup::widgets::DrawingArea::View drawing_view(const teacup::Size& viewport)
+{
+    return teacup::widgets::DrawingArea::View{}
+        .content_size(drawing_content_size)
+        .viewport_size(viewport)
+        .background(teacup::Style{}.bg(teacup::palette::surface()))
+        .draw(draw_scene);
+}
+
 teacup::Cmd tick()
 {
     return teacup::tick(std::chrono::milliseconds{ 180 }, [] { return TickMessage{}; });
@@ -225,6 +289,7 @@ teacup::UpdateResult<Model> update(Model m, const teacup::Message& message)
     teacup::widgets::List<Person>::View people_view;
     const teacup::layout::Areas areas = teacup::layout::resolve(showcase_tree(), teacup::Rect::from_size(m.screen_size));
     people_view.item_height(3).viewport_height(areas.get("people").height());
+    const teacup::widgets::DrawingArea::View scene_view = drawing_view(areas.get("drawing").size());
 
     const auto sync_menu_to_focus = [&]
     {
@@ -244,6 +309,8 @@ teacup::UpdateResult<Model> update(Model m, const teacup::Message& message)
     m.events.add("people", teacup::route_mouse(m.people, people_view, "people"));
     m.events.add("input", teacup::route_keys(m.input, input_view));
     m.events.add("input", teacup::route_mouse(m.input, input_view, "input"));
+    m.events.add("drawing", teacup::route_keys(m.drawing, scene_view));
+    m.events.add("drawing", teacup::route_mouse(m.drawing, scene_view, "drawing"));
 
     if (m.events.focus().order().empty())
     {
@@ -318,6 +385,11 @@ teacup::UpdateResult<Model> update(Model m, const teacup::Message& message)
                 m.menu.selected = was_focused == "input" ? 1 : was_focused == "people" ? 2 : 0;
                 m.events.focus().set("menu");
             }
+            return teacup::next(m);
+        }
+
+        if (consumed && was_focused == "drawing")
+        {
             return teacup::next(m);
         }
 
@@ -448,6 +520,20 @@ void view(const Model& m, teacup::Canvas screen)
                     .header_style(Style{}.fg(palette::accent()).bold())
                     .row_style(Style{}.fg(palette::text()))
                     .render(content.sub_absolute(areas.get("table")));
+
+                const bool drawing_focused = m.events.focus().is("drawing");
+                const Point scroll = drawing_view(areas.get("drawing").size())
+                                         .visible_offset(m.drawing, areas.get("drawing").size());
+                input_block()
+                    .border_style(Style{}.fg(drawing_focused ? palette::accent() : palette::subtle()))
+                    .title(" drawing " + std::to_string(scroll.x) + "," + std::to_string(scroll.y) + " ")
+                    .title_style(Style{}.fg(drawing_focused ? palette::accent() : palette::subtle()))
+                    .render(
+                        content.sub_absolute(areas.get("drawing-box")),
+                        [&](Canvas drawing_area)
+                        {
+                            drawing_view(drawing_area.size()).render(m.drawing, drawing_area);
+                        });
 
                 input_block()
                     .border_style(Style{}.fg(palette::subtle()))
