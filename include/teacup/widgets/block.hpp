@@ -20,14 +20,14 @@ public:
 
     Block& border(const Border& b)
     {
-        border_ = b;
-        has_border_ = true;
+        style_.border = b;
+        style_.has_border = true;
         return *this;
     }
 
     Block& border_style(const Style& s)
     {
-        border_style_ = s;
+        style_.border_style = s;
         return *this;
     }
 
@@ -39,13 +39,13 @@ public:
 
     Block& title_style(const Style& s)
     {
-        title_style_ = s;
+        style_.title_style = s;
         return *this;
     }
 
     Block& title_align(Align a)
     {
-        title_align_ = a;
+        style_.title_align = a;
         return *this;
     }
 
@@ -53,16 +53,16 @@ public:
 
     Block& padding(int left, int top, int right, int bottom)
     {
-        pad_left_ = left;
-        pad_top_ = top;
-        pad_right_ = right;
-        pad_bottom_ = bottom;
+        style_.pad_left = left;
+        style_.pad_top = top;
+        style_.pad_right = right;
+        style_.pad_bottom = bottom;
         return *this;
     }
 
     Block& background(const Color& c)
     {
-        background_ = c;
+        style_.background = c;
         return *this;
     }
 
@@ -74,17 +74,17 @@ public:
 
     [[nodiscard]] Rect inner(const Rect& area) const
     {
-        const int edge = has_border_ ? 1 : 0;
-        return area.inset(edge + pad_left_, edge + pad_top_, edge + pad_right_, edge + pad_bottom_);
+        const int edge = style_.has_border ? 1 : 0;
+        return area.inset(edge + style_.pad_left, edge + style_.pad_top, edge + style_.pad_right, edge + style_.pad_bottom);
     }
 
     Canvas draw(Canvas target) const
     {
-        if (background_.is_set())
+        if (style_.background.is_set())
         {
-            target.fill(" ", Style{}.bg(background_));
+            target.fill(" ", Style{}.bg(style_.background));
         }
-        if (has_border_)
+        if (style_.has_border)
         {
             draw_border(target);
         }
@@ -119,44 +119,49 @@ private:
         {
             return;
         }
-        const Style& s = border_style_;
+        const Style& s = style_.border_style;
 
         if (h == 1)
         {
-            target.horizontal_line(Point{ 0, 0 }, w, border_.top, s);
+            target.horizontal_line(Point{ 0, 0 }, w, style_.border.top, s);
         }
         else
         {
-            target.horizontal_line(Point{ 1, 0 }, w - 2, border_.top, s);
-            target.horizontal_line(Point{ 1, h - 1 }, w - 2, border_.bottom, s);
-            target.vertical_line(Point{ 0, 1 }, h - 2, border_.left, s);
-            target.vertical_line(Point{ w - 1, 1 }, h - 2, border_.right, s);
-            target.put(Point{ 0, 0 }, Cell{ border_.top_left, s });
-            target.put(Point{ w - 1, 0 }, Cell{ border_.top_right, s });
-            target.put(Point{ 0, h - 1 }, Cell{ border_.bottom_left, s });
-            target.put(Point{ w - 1, h - 1 }, Cell{ border_.bottom_right, s });
+            target.horizontal_line(Point{ 1, 0 }, w - 2, style_.border.top, s);
+            target.horizontal_line(Point{ 1, h - 1 }, w - 2, style_.border.bottom, s);
+            target.vertical_line(Point{ 0, 1 }, h - 2, style_.border.left, s);
+            target.vertical_line(Point{ w - 1, 1 }, h - 2, style_.border.right, s);
+            target.put(Point{ 0, 0 }, Cell{ style_.border.top_left, s });
+            target.put(Point{ w - 1, 0 }, Cell{ style_.border.top_right, s });
+            target.put(Point{ 0, h - 1 }, Cell{ style_.border.bottom_left, s });
+            target.put(Point{ w - 1, h - 1 }, Cell{ style_.border.bottom_right, s });
         }
 
         if (!title_.empty() && w > 2)
         {
             const int available = w - 2;
             const GlyphString title = title_.truncate(available);
-            const int offset = 1 + align_offset(title_align_, available, title.width());
-            target.text(Point{ offset, 0 }, title, title_style_);
+            const int offset = 1 + align_offset(style_.title_align, available, title.width());
+            target.text(Point{ offset, 0 }, title, style_.title_style);
         }
     }
 
-    Border border_{};
-    bool has_border_ = false;
-    Style border_style_{};
+    struct WidgetStyle
+    {
+        Border border{};
+        bool has_border = false;
+        Style border_style{};
+        Style title_style{};
+        Align title_align = Align::start;
+        int pad_left = 0;
+        int pad_top = 0;
+        int pad_right = 0;
+        int pad_bottom = 0;
+        Color background{};
+    };
+
     GlyphString title_{};
-    Style title_style_{};
-    Align title_align_ = Align::start;
-    int pad_left_ = 0;
-    int pad_top_ = 0;
-    int pad_right_ = 0;
-    int pad_bottom_ = 0;
-    Color background_{};
+    WidgetStyle style_{};
     RendererFn renderer_;
 };
 

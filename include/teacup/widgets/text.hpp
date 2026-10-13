@@ -30,25 +30,25 @@ public:
 
     Text& style(const Style& s)
     {
-        style_ = s;
+        style_.style = s;
         return *this;
     }
 
     Text& align(Align a)
     {
-        align_ = a;
+        style_.align = a;
         return *this;
     }
 
     Text& vertical_align(Align a)
     {
-        valign_ = a;
+        style_.valign = a;
         return *this;
     }
 
     Text& wrap(bool enabled)
     {
-        wrap_ = enabled;
+        style_.wrap = enabled;
         return *this;
     }
 
@@ -75,13 +75,13 @@ public:
         const int height = target.size().height;
 
         const std::vector<GlyphString> rows = lines(width);
-        const int offset = align_offset(valign_, height, static_cast<int>(rows.size()));
+        const int offset = align_offset(style_.valign, height, static_cast<int>(rows.size()));
         for (std::size_t i = 0; i < rows.size(); ++i)
         {
             const int y = offset + static_cast<int>(i);
             if (y >= 0 && y < height)
             {
-                target.text_aligned(y, rows[i], align_, style_);
+                target.text_aligned(y, rows[i], style_.align, style_.style);
             }
         }
     }
@@ -89,18 +89,22 @@ public:
 private:
     [[nodiscard]] std::vector<GlyphString> lines(int width) const
     {
-        if (wrap_)
+        if (style_.wrap)
         {
             return wrap_text(content_, width);
         }
         return wrap_text(content_, 0);
     }
+    struct WidgetStyle
+    {
+        Style style{};
+        Align align = Align::start;
+        Align valign = Align::start;
+        bool wrap = true;
+    };
 
     GlyphString content_{};
-    Style style_{};
-    Align align_ = Align::start;
-    Align valign_ = Align::start;
-    bool wrap_ = true;
+    WidgetStyle style_{};
     RendererFn renderer_;
 };
 

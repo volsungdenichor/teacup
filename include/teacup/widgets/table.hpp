@@ -36,13 +36,13 @@ public:
 
     Table& header_style(const Style& s)
     {
-        header_style_ = s;
+        style_.header_style = s;
         return *this;
     }
 
     Table& row_style(const Style& s)
     {
-        row_style_ = s;
+        style_.row_style = s;
         return *this;
     }
 
@@ -76,7 +76,7 @@ public:
 
         if (!headers_.empty())
         {
-            target.text(Point{ 0, row_index }, pad_to(render_row(headers_, col_widths), width), header_style_);
+            target.text(Point{ 0, row_index }, pad_to(render_row(headers_, col_widths), width), style_.header_style);
             ++row_index;
         }
 
@@ -86,7 +86,7 @@ public:
             {
                 break;
             }
-            target.text(Point{ 0, row_index }, pad_to(render_row(row, col_widths), width), row_style_);
+            target.text(Point{ 0, row_index }, pad_to(render_row(row, col_widths), width), style_.row_style);
             ++row_index;
         }
 
@@ -153,10 +153,14 @@ private:
         return line;
     }
 
+    struct WidgetStyle
+    {
+        Style header_style = Style{}.fg(Color::hex("#f38ba8")).add(Attr::bold);
+        Style row_style = Style{}.fg(Color::hex("#cdd6f4"));
+    };
     std::vector<GlyphString> headers_;
     std::vector<std::vector<GlyphString>> rows_;
-    Style header_style_ = Style{}.fg(Color::hex("#f38ba8")).add(Attr::bold);
-    Style row_style_ = Style{}.fg(Color::hex("#cdd6f4"));
+    WidgetStyle style_;
     RendererFn renderer_;
 };
 

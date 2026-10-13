@@ -35,13 +35,13 @@ struct Tabs
 
         View& tab_style(const Style& value)
         {
-            tab_style_ = value;
+            style_.tab_style = value;
             return *this;
         }
 
         View& selected_style(const Style& value)
         {
-            selected_style_ = value;
+            style_.selected_style = value;
             return *this;
         }
 
@@ -115,13 +115,13 @@ struct Tabs
             {
                 return;
             }
-            target.fill(" ", tab_style_);
+            target.fill(" ", style_.tab_style);
             const int selected = selected_index(state);
             const std::vector<Rect> rects = label_rects(state, target.bounds());
             for (std::size_t i = 0; i < rects.size() && rects[i].left() < target.size().width; ++i)
             {
                 const bool active = static_cast<int>(i) == selected;
-                target.text(rects[i].origin(), label_text(i, active), active ? selected_style_ : tab_style_);
+                target.text(rects[i].origin(), label_text(i, active), active ? style_.selected_style : style_.tab_style);
             }
         }
 
@@ -136,9 +136,13 @@ struct Tabs
             return active ? "[" + labels_[index] + "]" : " " + labels_[index] + " ";
         }
 
+        struct WidgetStyle
+        {
+            Style tab_style;
+            Style selected_style = Style{}.bold().underline();
+        };
         std::vector<GlyphString> labels_;
-        Style tab_style_;
-        Style selected_style_ = Style{}.bold().underline();
+        WidgetStyle style_;
         RendererFn renderer_;
     };
 };

@@ -28,21 +28,21 @@ struct Progress
 
         View& gradient(const Color& from, const Color& to)
         {
-            from_ = from;
-            to_ = to;
+            style_.from = from;
+            style_.to = to;
             return *this;
         }
 
         View& track_style(const Style& s)
         {
-            track_style_ = s;
+            style_.track_style = s;
             return *this;
         }
 
         View& glyphs(Glyph filled, Glyph empty)
         {
-            filled_ = std::move(filled);
-            empty_ = std::move(empty);
+            style_.filled = std::move(filled);
+            style_.empty = std::move(empty);
             return *this;
         }
 
@@ -71,22 +71,27 @@ struct Progress
                 if (x < filled)
                 {
                     const double t = width > 1 ? static_cast<double>(x) / (width - 1) : 0.0;
-                    const Style s = Style{}.fg(Color::mix(from_, to_, t));
-                    target.put(Point{ x, y }, Cell{ filled_, s });
+                    const Style s = Style{}.fg(Color::mix(style_.from, style_.to, t));
+                    target.put(Point{ x, y }, Cell{ style_.filled, s });
                 }
                 else
                 {
-                    target.put(Point{ x, y }, Cell{ empty_, track_style_ });
+                    target.put(Point{ x, y }, Cell{ style_.empty, style_.track_style });
                 }
             }
         }
 
     private:
-        Color from_ = Color::hex("#7d56f4");
-        Color to_ = Color::hex("#f38ba8");
-        Style track_style_ = Style{}.fg(Color::hex("#45475a"));
-        Glyph filled_ = "█";
-        Glyph empty_ = "░";
+        struct WidgetStyle
+        {
+            Color from = Color::hex("#7d56f4");
+            Color to = Color::hex("#f38ba8");
+            Style track_style = Style{}.fg(Color::hex("#45475a"));
+            Glyph filled = "█";
+            Glyph empty = "░";
+        };
+
+        WidgetStyle style_;
         RendererFn renderer_;
     };
 };
