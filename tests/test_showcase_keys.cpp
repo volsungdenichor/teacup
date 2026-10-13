@@ -22,8 +22,6 @@ Model fresh_model()
     return initial;
 }
 
-const auto test_world = World{};
-
 }  // namespace
 
 TEST_CASE("showcase update(): focus starts on the menu hub")
@@ -118,16 +116,17 @@ TEST_CASE("showcase update(): raycaster moves and turns when focused")
 TEST_CASE("raycaster: rays measure perpendicular distance to the first wall")
 {
     // From (1.5, 1.5) looking east, the first wall is the '#' at column 7.
-    const RayHit east = cast_ray(1.5, 1.5, 1.0, 0.0, test_world);
+    const auto world = World{};
+    const RayHit east = cast_ray(1.5, 1.5, 1.0, 0.0, world);
     CHECK(east.wall == '#');
     CHECK(east.vertical_face);
     CHECK(std::abs(east.distance - 5.5) < 1e-9);
 
-    const RayHit north = cast_ray(1.5, 1.5, 0.0, -1.0, test_world);
+    const RayHit north = cast_ray(1.5, 1.5, 0.0, -1.0, world);
     CHECK_FALSE(north.vertical_face);
     CHECK(std::abs(north.distance - 0.5) < 1e-9);
 
-    const RayHit pillar = cast_ray(1.5, 2.5, 1.0, 0.0, test_world);
+    const RayHit pillar = cast_ray(1.5, 2.5, 1.0, 0.0, world);
     CHECK(pillar.wall == '2');
     CHECK(std::abs(pillar.distance - 1.5) < 1e-9);
 }
@@ -140,11 +139,11 @@ TEST_CASE("raycaster: walls block movement but the player slides along them")
     r.angle = -M_PI / 4.0;  // north-east, into the top wall
     for (int i = 0; i < 20; ++i)
     {
-        r.move(0.25, 0.0, test_world);
+        r.move(0.25, 0.0);
     }
-    CHECK(r.y >= 1.0 + test_world.player_radius);
+    CHECK(r.y >= 1.0 + r.world.player_radius);
     CHECK(r.x > 3.0);  // slid east along the wall
-    CHECK(r.x < 7.0 - test_world.player_radius);
+    CHECK(r.x < 7.0 - r.world.player_radius);
 }
 
 TEST_CASE("raycaster: render fills the view with sky, walls and floor")
@@ -155,7 +154,7 @@ TEST_CASE("raycaster: render fills the view with sky, walls and floor")
     r.angle = 0.0;
     r.show_map = false;
     Surface frame{ Size{ 20, 10 } };
-    draw_raycaster(r, Canvas{ frame }, test_world);
+    draw_raycaster(r, Canvas{ frame });
 
     const Cell& top = frame.at(Point{ 10, 0 });
     const Cell& middle = frame.at(Point{ 10, 5 });

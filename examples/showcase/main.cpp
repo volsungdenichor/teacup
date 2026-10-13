@@ -143,10 +143,12 @@ struct Raycaster
     double angle = 0.15;  // radians; the map's y axis points down, so positive angles turn right
     bool show_map = false;
 
+    World world;
+
     void turn(double amount) { angle = std::remainder(angle + amount, 2.0 * M_PI); }
 
     // Moves with axis-separated collision so the player slides along walls.
-    void move(double forward, double strafe, const World& world)
+    void move(double forward, double strafe)
     {
         const double dx = std::cos(angle) * forward - std::sin(angle) * strafe;
         const double dy = std::sin(angle) * forward + std::cos(angle) * strafe;
@@ -236,7 +238,7 @@ teacup::Color shade_wall(const RayHit& hit)
 }
 
 // Renders the first-person view into `c`, two square pixels per cell using upper half blocks.
-void draw_raycaster(const Raycaster& r, teacup::Canvas c, const World& world)
+void draw_raycaster(const Raycaster& r, teacup::Canvas c)
 {
     using namespace teacup;
     const int width = c.size().width;
@@ -247,9 +249,9 @@ void draw_raycaster(const Raycaster& r, teacup::Canvas c, const World& world)
     }
     const double dir_x = std::cos(r.angle);
     const double dir_y = std::sin(r.angle);
-    const double plane_x = -dir_y * world.field_of_view_plane;
-    const double plane_y = dir_x * world.field_of_view_plane;
-    const double focal = (width / 2.0) / world.field_of_view_plane;
+    const double plane_x = -dir_y * r.world.field_of_view_plane;
+    const double plane_y = dir_x * r.world.field_of_view_plane;
+    const double focal = (width / 2.0) / r.world.field_of_view_plane;
     const double horizon = pixel_height / 2.0;
 
     const auto backdrop = [&](int py)
@@ -264,7 +266,7 @@ void draw_raycaster(const Raycaster& r, teacup::Canvas c, const World& world)
     for (int x = 0; x < width; ++x)
     {
         const double camera = 2.0 * (x + 0.5) / width - 1.0;
-        const RayHit hit = cast_ray(r.x, r.y, dir_x + plane_x * camera, dir_y + plane_y * camera, world);
+        const RayHit hit = cast_ray(r.x, r.y, dir_x + plane_x * camera, dir_y + plane_y * camera, r.world);
         const double wall_height = focal / hit.distance;
         const double wall_top = horizon - wall_height / 2.0;
         const double wall_bottom = horizon + wall_height / 2.0;
@@ -286,16 +288,16 @@ void draw_raycaster(const Raycaster& r, teacup::Canvas c, const World& world)
             {
                 return Color::hex("#ffffff");
             }
-            const char cell = world.at(mx, my);
+            const char cell = r.world.at(mx, my);
             if (cell != '.')
             {
                 return Color::mix(wall_color(cell), Color::hex("#11111b"), 0.3);
             }
             return mx == facing_x && my == facing_y ? palette::accent() : Color::hex("#11111b");
         };
-        for (int row = 0; row < (world.world_height + 1) / 2; ++row)
+        for (int row = 0; row < (r.world.world_height + 1) / 2; ++row)
         {
-            for (int mx = 0; mx < world.world_width; ++mx)
+            for (int mx = 0; mx < r.world.world_width; ++mx)
             {
                 c.put(
                     Point{ mx, row },
@@ -306,17 +308,17 @@ void draw_raycaster(const Raycaster& r, teacup::Canvas c, const World& world)
 }
 
 // Applies a raycaster control key; returns false for keys it does not handle.
-bool steer(Raycaster& r, const teacup::KeyEvent& key, const World& world)
+bool steer(Raycaster& r, const teacup::KeyEvent& key)
 {
     constexpr double step = 0.25;
     constexpr double turn = M_PI / 16.0;
     if (key.matches_any({ "w", "up" }))
     {
-        r.move(step, 0.0, world);
+        r.move(step, 0.0);
     }
     else if (key.matches_any({ "s", "down" }))
     {
-        r.move(-step, 0.0, world);
+        r.move(-step, 0.0);
     }
     else if (key.matches_any({ "a", "left" }))
     {
@@ -328,11 +330,11 @@ bool steer(Raycaster& r, const teacup::KeyEvent& key, const World& world)
     }
     else if (key.matches("q"))
     {
-        r.move(0.0, -step, world);
+        r.move(0.0, -step);
     }
     else if (key.matches("e"))
     {
-        r.move(0.0, step, world);
+        r.move(0.0, step);
     }
     else if (key.matches("m"))
     {
@@ -449,8 +451,6 @@ void render_player(
 // Below this size the 3D view keeps its resolution and the drawing area scrolls over it.
 constexpr teacup::Size min_render_size{ 32, 8 };
 
-const auto world = World{};
-
 teacup::widgets::DrawingArea::View drawing_view(const Raycaster& raycaster, const teacup::Size& viewport)
 {
     return teacup::widgets::DrawingArea::View{}
@@ -459,7 +459,7 @@ teacup::widgets::DrawingArea::View drawing_view(const Raycaster& raycaster, cons
                           (std::max)(viewport.height, min_render_size.height) })
         .viewport_size(viewport)
         .background(teacup::Style{}.bg(teacup::palette::surface()))
-        .draw([&raycaster](teacup::Canvas c) { draw_raycaster(raycaster, c, world); });
+        .draw([&raycaster](teacup::Canvas c) { draw_raycaster(raycaster, c); });
 }
 
 teacup::Cmd tick()
@@ -546,7 +546,7 @@ teacup::UpdateResult<Model> update(Model m, const teacup::Message& message)
         }
 
         const std::string was_focused = m.events.focus().focused();
-        if (was_focused == "drawing" && steer(m.raycaster, *key, world))
+        if (was_focused == "drawing" && steer(m.raycaster, *key))
         {
             return teacup::next(m);
         }
