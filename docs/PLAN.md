@@ -152,6 +152,30 @@ does not set an explicit order.
   `drawing_area` (free-form content drawn in its own coordinates, scrolled
   within the widget), `status_bar`.
 
+### Selectable tile maps
+
+`widgets::TileMap` separates application-owned `State` (selected tile and
+`DrawingArea` scroll state) from `View` configuration. Tiles default to 6 columns
+by 3 terminal rows: the `pixel(tile, local_pixel)` callback supplies a color for
+each of the tile's 6 by 6 pixels. Upper half blocks combine two vertical pixels
+into each cell. Biomes, roads, and other terrain features belong to the callback,
+not the widget. Rendering samples only visible cells, without a full-map buffer.
+
+Configure `map_size()` in tiles and `viewport_size()` in terminal cells. Optional
+`tile_size()` dimensions must be at least 3 by 3 cells; invalid or overflowing
+dimensions throw `std::invalid_argument`. `tile_rect()` returns content-space
+bounds and throws `std::out_of_range` for a tile outside the map.
+Arrow keys and hjkl move the selection and bring its frame into view; page
+up/down and home/end pan via DrawingArea. Left click selects a tile, wheel pans
+vertically, and Shift+wheel pans horizontally. `tile_at()` uses the actual event
+area and scroll offset, rejecting padding outside the map. Call `ensure_visible()`
+after resizing or changing map dimensions to clamp selection and restore visibility.
+The selected border is drawn last, with configurable `selected_style()`.
+
+The showcase's **terrain map** menu entry demonstrates eight terrain types,
+shallow shorelines, a road and bridge, and a small settlement. The raycaster
+remains available independently, with its own scroll state and controls.
+
 ## 6. Milestones
 
 | # | Milestone | Contents | Status |

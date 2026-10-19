@@ -13,7 +13,7 @@ namespace
 Model fresh_model()
 {
     Model initial;
-    initial.menu.items = { "overview", "raycaster", "people", "table", "progress" };
+    initial.menu.items = { "overview", "raycaster", "people", "terrain map", "progress" };
     initial.people.items = {
         { "Name: McEnroe", Country::usa, true },
         { "Name: Agassi", Country::usa, true },
@@ -111,6 +111,106 @@ TEST_CASE("showcase update(): raycaster moves and turns when focused")
     step(KeyEvent{ Key::enter });  // back out to the hub
     CHECK(m.events.focus().focused() == "menu");
     CHECK(m.menu.selected == 1);
+}
+
+TEST_CASE("showcase terrain mode selects tiles without steering the raycaster")
+{
+    Model m = fresh_model();
+    auto step = [&](KeyEvent key) { m = update(std::move(m), Message{ key }).model; };
+    step(KeyEvent{ Key::none });
+    m.menu.selected = 3;
+    step(KeyEvent{ Key::enter });
+    REQUIRE(m.show_terrain);
+    REQUIRE(m.events.focus().focused() == "drawing");
+    const Raycaster before = m.raycaster;
+    const Point start = m.terrain.selected;
+    step(KeyEvent{ Key::right });
+    CHECK(m.terrain.selected == start + Point{ 1, 0 });
+    CHECK(m.raycaster.angle == before.angle);
+    CHECK(m.drawing.offset == Point{});
+    const auto areas = layout::resolve(showcase_tree(), Rect::from_size(m.screen_size));
+    const Rect area = areas.get("drawing");
+    const auto expected = terrain_view(area.size()).tile_at(m.terrain, area.origin(), area);
+    REQUIRE(expected);
+    m = update(
+            std::move(m), Message{ MouseEvent{ area.origin(), MouseButton::left, MouseAction::press } })
+            .model;
+    CHECK(m.terrain.selected == *expected);
+    Surface frame{ m.screen_size };
+    view(m, Canvas{ frame });
+    CHECK(frame.at(areas.get("progress").origin()).glyph.utf8() != " ");
+    step(KeyEvent{ Key::enter });
+    CHECK(m.events.focus().focused() == "menu");
+    CHECK(m.menu.selected == 3);
+    m.menu.selected = 1;
+    step(KeyEvent{ Key::enter });
+    CHECK_FALSE(m.show_terrain);
+    step(KeyEvent{ Key::right });
+    CHECK(m.raycaster.angle > before.angle);
+}
+
+TEST_CASE("showcase terrain stays renderable and selection visible after resizing")
+{
+    Model m = fresh_model();
+    m.show_terrain = true;
+    for (const Size size : { Size{ 120, 40 }, Size{ 80, 24 }, Size{ 32, 12 }, Size{ 4, 3 } })
+    {
+        m = update(std::move(m), Message{ ResizeEvent{ size } }).model;
+        const auto areas = layout::resolve(showcase_tree(), Rect::from_size(size));
+        const auto map = terrain_view(areas.get("drawing").size());
+        CHECK(Rect::from_size(terrain_size).contains(m.terrain.selected));
+        Surface frame{ size };
+        CHECK_NOTHROW(view(m, Canvas{ frame }));
+        const Rect area = areas.get("drawing");
+        if (area.width() >= 6 && area.height() >= 3)
+        {
+            const Rect tile = map.tile_rect(m.terrain.selected);
+            widgets::DrawingArea::View drawing;
+            drawing.content_size(Size{ terrain_size.width * 6, terrain_size.height * 3 });
+            CHECK(drawing.visible_rect(m.terrain.drawing, area.size()).intersect(tile) == tile);
+        }
+    }
+}
+
+TEST_CASE("showcase terrain includes every biome with stable, distinct textures")
+{
+    std::array<bool, 8> seen{};
+    std::array<std::vector<Color>, 8> textures;
+    Rect::from_size(terrain_size).for_each(
+        [&](Point tile)
+        {
+            const auto index = static_cast<std::size_t>(terrain_at(tile));
+            if (!seen[index])
+            {
+                seen[index] = true;
+                Rect{ 0, 0, 6, 6 }.for_each(
+                    [&](Point pixel)
+                    {
+                        const Color first = terrain_pixel(tile, pixel);
+                        CHECK(first == terrain_pixel(tile, pixel));
+                        textures[index].push_back(first);
+                    });
+            }
+        });
+    for (std::size_t i = 0; i < seen.size(); ++i)
+    {
+        REQUIRE(seen[i]);
+        for (std::size_t j = i + 1; j < seen.size(); ++j)
+        {
+            CHECK(textures[i] != textures[j]);
+        }
+    }
+}
+
+TEST_CASE("showcase terrain river bends remain edge connected")
+{
+    for (int y = 3; y < 12; y += 3)
+    {
+        const int river = 8 + y / 3;
+        CHECK(terrain_at(Point{ river - 1, y - 1 }) == Terrain::water);
+        CHECK(terrain_at(Point{ river - 1, y }) == Terrain::water);
+        CHECK(terrain_at(Point{ river, y }) == Terrain::water);
+    }
 }
 
 TEST_CASE("raycaster: rays measure perpendicular distance to the first wall")

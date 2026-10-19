@@ -347,6 +347,148 @@ bool steer(Raycaster& r, const teacup::KeyEvent& key)
     return true;
 }
 
+enum class Terrain
+{
+    grass,
+    forest,
+    water,
+    sand,
+    hills,
+    mountain,
+    snow,
+    marsh
+};
+
+constexpr teacup::Size terrain_size{ 24, 14 };
+
+Terrain terrain_at(teacup::Point p)
+{
+    const int river = 8 + p.y / 3;
+    if (p.y >= 12 || p.x == river || (p.y > 0 && p.y % 3 == 0 && p.x == river - 1)
+        || (p.y >= 10 && p.x < 8))
+    {
+        return Terrain::water;
+    }
+    if (p.y == 11 || (p.y >= 9 && p.x < 8))
+    {
+        return Terrain::sand;
+    }
+    if (p.x >= 18 && p.y <= 2)
+    {
+        return Terrain::snow;
+    }
+    if (p.x >= 16 && p.y <= 4)
+    {
+        return Terrain::mountain;
+    }
+    if (p.x >= 14 && p.y <= 5)
+    {
+        return Terrain::hills;
+    }
+    if (p.x >= 12 && p.x <= 15 && p.y >= 9)
+    {
+        return Terrain::marsh;
+    }
+    if ((p.x >= 2 && p.x <= 6 && p.y <= 6) || (p.x >= 12 && p.x <= 14 && p.y >= 2 && p.y <= 5))
+    {
+        return Terrain::forest;
+    }
+    return Terrain::grass;
+}
+
+std::string terrain_name(Terrain terrain)
+{
+    switch (terrain)
+    {
+        case Terrain::grass: return "Grassland";
+        case Terrain::forest: return "Forest";
+        case Terrain::water: return "Water";
+        case Terrain::sand: return "Sand";
+        case Terrain::hills: return "Hills";
+        case Terrain::mountain: return "Mountains";
+        case Terrain::snow: return "Snow";
+        case Terrain::marsh: return "Marsh";
+    }
+    return {};
+}
+
+teacup::Color terrain_pixel(teacup::Point tile, teacup::Point pixel)
+{
+    using teacup::Color;
+    const Terrain terrain = terrain_at(tile);
+    const int x = pixel.x;
+    const int y = pixel.y;
+    const int variation = (tile.x * 17 + tile.y * 31 + x * 7 + y * 13) % 19;
+    const auto color = [](const char* value) { return Color::hex(value); };
+    Color base;
+    switch (terrain)
+    {
+        case Terrain::water:
+        {
+            const bool shore = (x == 0 && terrain_at(tile + teacup::Point{ -1, 0 }) != Terrain::water)
+                               || (x == 5 && terrain_at(tile + teacup::Point{ 1, 0 }) != Terrain::water)
+                               || (y == 0 && terrain_at(tile + teacup::Point{ 0, -1 }) != Terrain::water)
+                               || (y == 5 && terrain_at(tile + teacup::Point{ 0, 1 }) != Terrain::water);
+            base = color(shore ? "#4d9c9b" : variation == 0 ? "#639ca8" : "#285568");
+            break;
+        }
+        case Terrain::forest:
+            base = color("#3e6040");
+            if (y >= 1 && y <= 4 && std::abs(x - 2) <= y / 2)
+            {
+                base = color(x < 3 ? "#70935a" : "#254b3c");
+            }
+            if (y == 5 && x == 2)
+            {
+                base = color("#8c7650");
+            }
+            break;
+        case Terrain::mountain:
+        case Terrain::snow:
+            base = color(terrain == Terrain::snow ? "#acbec1" : "#63776d");
+            if (y >= 1 && std::abs(x - 3) <= y / 2)
+            {
+                base = color(y <= 2 ? "#e3e7d8" : x < 3 ? "#a8b2a8" : "#455963");
+            }
+            break;
+        case Terrain::hills:
+            base = color(y >= 2 && y <= 4 && x >= 1 && x <= 4 ? (y == 2 ? "#a5a06a" : "#66764d") : "#7d8753");
+            break;
+        case Terrain::sand:
+            base = color(y == 3 && x >= 1 && x <= 3 ? "#bba374" : "#d0bd8b");
+            break;
+        case Terrain::marsh:
+            base = color(y == 3 && x >= 2 && x <= 4 ? "#497a78" : variation < 3 ? "#96a16b" : "#536f58");
+            break;
+        case Terrain::grass:
+            base = color(variation == 0 ? "#93a66a" : "#6f8752");
+            break;
+    }
+    // A continuous road crosses the river on a timber bridge.
+    if (tile.y == 7 && tile.x >= 3 && tile.x <= 20 && y >= 2 && y <= 3)
+    {
+        base = color(terrain == Terrain::water ? (x % 2 == 0 ? "#ac8858" : "#725639") : "#c2aa7b");
+    }
+    // Three houses beside the road form a small, readable settlement.
+    if (tile.y == 6 && tile.x >= 14 && tile.x <= 16)
+    {
+        if (y >= 1 && y <= 2 && std::abs(x - 3) <= y)
+        {
+            base = color("#a65e48");
+        }
+        if (y >= 3 && y <= 4 && x >= 2 && x <= 4)
+        {
+            base = color(x == 3 && y == 4 ? "#544538" : "#decc9d");
+        }
+    }
+    return base;
+}
+
+teacup::widgets::TileMap::View terrain_view(teacup::Size viewport)
+{
+    return teacup::widgets::TileMap::View{}.map_size(terrain_size).viewport_size(viewport).pixel(terrain_pixel);
+}
+
 struct Model
 {
     int tick = 0;
@@ -359,6 +501,8 @@ struct Model
     teacup::widgets::Viewport::State viewport;
     teacup::widgets::DrawingArea::State drawing;
     Raycaster raycaster;
+    bool show_terrain = false;
+    teacup::widgets::TileMap::State terrain{ { 10, 7 }, {} };
     teacup::widgets::Spinner::State spinner;
     teacup::widgets::List<Person>::State people;
 };
@@ -481,10 +625,23 @@ teacup::UpdateResult<Model> update(Model m, const teacup::Message& message)
     const teacup::layout::Areas areas = teacup::layout::resolve(showcase_tree(), teacup::Rect::from_size(m.screen_size));
     people_view.item_height(3).viewport_height(areas.get("people").height());
     const teacup::widgets::DrawingArea::View scene_view = drawing_view(m.raycaster, areas.get("drawing").size());
+    const auto map_view = terrain_view(areas.get("drawing").size());
 
     const auto activate_menu = [&]
     {
-        m.events.focus().set(m.menu.selected == 1 ? "drawing" : m.menu.selected == 2 ? "people" : "menu");
+        if (m.menu.selected == 1 || m.menu.selected == 3)
+        {
+            m.show_terrain = m.menu.selected == 3;
+            if (m.show_terrain)
+            {
+                map_view.ensure_visible(m.terrain);
+            }
+            m.events.focus().set("drawing");
+        }
+        else
+        {
+            m.events.focus().set(m.menu.selected == 2 ? "people" : "menu");
+        }
     };
 
     m.events.clear();
@@ -493,8 +650,16 @@ teacup::UpdateResult<Model> update(Model m, const teacup::Message& message)
     m.events.add("tabs", teacup::route_mouse(m.tabs, tabs_view.labels({ "gallery", "layout", "events" }), "tabs"));
     m.events.add("people", teacup::route_keys(m.people, people_view));
     m.events.add("people", teacup::route_mouse(m.people, people_view, "people"));
-    m.events.add("drawing", teacup::route_keys(m.drawing, scene_view));
-    m.events.add("drawing", teacup::route_mouse(m.drawing, scene_view, "drawing"));
+    if (m.show_terrain)
+    {
+        m.events.add("drawing", teacup::route_keys(m.terrain, map_view));
+        m.events.add("drawing", teacup::route_mouse(m.terrain, map_view, "drawing"));
+    }
+    else
+    {
+        m.events.add("drawing", teacup::route_keys(m.drawing, scene_view));
+        m.events.add("drawing", teacup::route_mouse(m.drawing, scene_view, "drawing"));
+    }
 
     if (m.events.focus().order().empty())
     {
@@ -527,6 +692,11 @@ teacup::UpdateResult<Model> update(Model m, const teacup::Message& message)
     if (const auto* resize = teacup::msg_cast<teacup::ResizeEvent>(message))
     {
         m.screen_size = resize->size;
+        if (m.show_terrain)
+        {
+            const auto resized = teacup::layout::resolve(showcase_tree(), teacup::Rect::from_size(m.screen_size));
+            terrain_view(resized.get("drawing").size()).ensure_visible(m.terrain);
+        }
         return teacup::next(m);
     }
 
@@ -546,7 +716,7 @@ teacup::UpdateResult<Model> update(Model m, const teacup::Message& message)
         }
 
         const std::string was_focused = m.events.focus().focused();
-        if (was_focused == "drawing" && steer(m.raycaster, *key))
+        if (was_focused == "drawing" && !m.show_terrain && steer(m.raycaster, *key))
         {
             return teacup::next(m);
         }
@@ -560,13 +730,13 @@ teacup::UpdateResult<Model> update(Model m, const teacup::Message& message)
             }
             else
             {
-                m.menu.selected = was_focused == "drawing" ? 1 : was_focused == "people" ? 2 : 0;
+                m.menu.selected = was_focused == "drawing" ? (m.show_terrain ? 3 : 1) : was_focused == "people" ? 2 : 0;
                 m.events.focus().set("menu");
             }
             return teacup::next(m);
         }
 
-        if (consumed && was_focused == "drawing")
+        if (was_focused == "drawing" && (consumed || m.show_terrain))
         {
             return teacup::next(m);
         }
@@ -670,15 +840,33 @@ void view(const Model& m, teacup::Canvas screen)
             screen.sub(areas.get("components")),
             [&](Canvas content)
             {
-                widgets::Progress::View{}
-                    .gradient(palette::accent(), Color::hex("#43bf6d"))
-                    .render(widgets::Progress::State{ (m.tick % 100) / 99.0 }, content.sub_absolute(areas.get("progress")));
+                if (m.show_terrain)
+                {
+                    const Point selected = m.terrain.selected;
+                    widgets::Text{
+                        terrain_name(terrain_at(selected)) + " (" + std::to_string(selected.x) + ","
+                        + std::to_string(selected.y) + ") · wheel pan" }
+                        .style(Style{}.fg(palette::subtle()))
+                        .render(content.sub_absolute(areas.get("progress")));
+                }
+                else
+                {
+                    widgets::Progress::View{}
+                        .gradient(palette::accent(), Color::hex("#43bf6d"))
+                        .render(
+                            widgets::Progress::State{ (m.tick % 100) / 99.0 },
+                            content.sub_absolute(areas.get("progress")));
+                }
 
                 const bool drawing_focused = m.events.focus().is("drawing");
                 const Point scroll = drawing_view(m.raycaster, areas.get("drawing").size())
                                          .visible_offset(m.drawing, areas.get("drawing").size());
                 std::string title = drawing_focused ? " raycaster · wasd/arrows · q/e · m map " : " raycaster ";
-                if (scroll != Point{})
+                if (m.show_terrain)
+                {
+                    title = drawing_focused ? " terrain · arrows/hjkl · click " : " terrain ";
+                }
+                if (!m.show_terrain && scroll != Point{})
                 {
                     title += "@" + std::to_string(scroll.x) + "," + std::to_string(scroll.y) + " ";
                 }
@@ -689,7 +877,16 @@ void view(const Model& m, teacup::Canvas screen)
                     .render(
                         content.sub_absolute(areas.get("drawing-box")),
                         [&](Canvas drawing_area)
-                        { drawing_view(m.raycaster, drawing_area.size()).render(m.drawing, drawing_area); });
+                        {
+                            if (m.show_terrain)
+                            {
+                                terrain_view(drawing_area.size()).render(m.terrain, drawing_area);
+                            }
+                            else
+                            {
+                                drawing_view(m.raycaster, drawing_area.size()).render(m.drawing, drawing_area);
+                            }
+                        });
             });
 
     widgets::Text{ "arrows select · enter activate · tab/shift+tab focus · ctrl+c quit" }
@@ -703,7 +900,7 @@ void view(const Model& m, teacup::Canvas screen)
 int main()
 {
     Model model;
-    model.menu.items = { "overview", "raycaster", "people", "table", "progress" };
+    model.menu.items = { "overview", "raycaster", "people", "terrain map", "progress" };
     model.tabs.selected = 0;
     model.viewport.lines = { "viewport", "scrollable", "content", "lives", "inside", "a", "small", "window" };
     model.people.items = {

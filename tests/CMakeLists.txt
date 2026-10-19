@@ -18,6 +18,7 @@ add_executable(teacup_tests
     test_list.cpp
     test_showcase_keys.cpp
     test_table.cpp
+    test_tile_map.cpp
     test_spinner_tabs.cpp
     test_text.cpp
     test_text_input.cpp

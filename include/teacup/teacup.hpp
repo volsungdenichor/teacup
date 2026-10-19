@@ -26,5 +26,6 @@
 #include "teacup/widgets/tabs.hpp"
 #include "teacup/widgets/text.hpp"
 #include "teacup/widgets/text_input.hpp"
+#include "teacup/widgets/tile_map.hpp"
 #include "teacup/widgets/viewport.hpp"
 #include "teacup/widgets/spinner.hpp"
